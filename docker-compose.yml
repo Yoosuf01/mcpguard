@@ -1,0 +1,22 @@
+# MCPGuard – one-command local demo
+# Usage: docker compose up
+version: "3.9"
+services:
+  mcpguard:
+    build: { context: ./shield, dockerfile: Dockerfile }
+    ports: ["8080:8080", "8081:8081"]
+    environment:
+      MCPGUARD_HS256_SECRET: "dev-secret-change-me-dev-secret-change-me"
+      MCPGUARD_ADMIN_TOKEN: "dev-admin-token-change-me-16chars"
+    volumes: ["./shield/configs:/configs:ro"]
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ["9090:9090"]
+    volumes: ["./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    restart: unless-stopped
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports: ["16686:16686", "4318:4318"]
+    environment: { COLLECTOR_OTLP_ENABLED: "true" }
+    restart: unless-stopped
