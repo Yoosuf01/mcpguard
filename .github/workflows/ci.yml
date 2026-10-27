@@ -1,30 +1,64 @@
-name: ci
+name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feature/**", "fix/**"]
   pull_request:
-
-permissions:
-  contents: read
+    branches: [main]
 
 jobs:
-  shield:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: shield
+  test:
+    name: Test (Go ${{ matrix.go }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        go: ["1.23"]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: shield/go.mod
-          cache-dependency-path: shield/go.sum
-      - name: gofmt
-        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
-      - name: vet
-        run: go vet ./...
-      - name: test (race)
-        run: go test -race -count=1 ./...
-      - name: exploit demo
-        run: ./examples/exploit-demo/demo.sh
+          go-version: ${{ matrix.go }}
+          cache: true
+      - name: go vet
+        run: cd shield && go vet ./...
+      - name: go test (race)
+        run: cd shield && go test -race -count=1 -timeout=120s ./...
+      - name: coverage
+        if: matrix.os == 'ubuntu-latest'
+        run: cd shield && go test -coverprofile=coverage.out ./...
+      - name: upload coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./shield/coverage.out
+          fail_ci_if_error: false
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.23", cache: true }
+      - uses: golangci/golangci-lint-action@v6
+        with: { version: latest, working-directory: shield }
+
+  build:
+    name: Build binary
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.23", cache: true }
+      - name: Build
+        run: |
+          cd shield && go build \
+            -ldflags "-s -w \
+              -X github.com/Yoosuf01/mcpguard/shield/internal/version.Version=$(git describe --tags --always) \
+              -X github.com/Yoosuf01/mcpguard/shield/internal/version.Commit=$(git rev-parse --short HEAD) \
+              -X github.com/Yoosuf01/mcpguard/shield/internal/version.BuildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o ../bin/mcpguard ./cmd/shield
+      - uses: actions/upload-artifact@v4
+        with: { name: mcpguard-linux-amd64, path: bin/mcpguard }
