@@ -1,9 +1,23 @@
+# ── Build artefacts ──────────────────────────────────────────────────────────
 bin/
 dist/
-*.log
-.DS_Store
+*.test
+coverage.out
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
-coverage.out
-*.test
+
+# ── Private maintainer docs (never push to public repo) ──────────────────────
+private-docs/
+
+# ── OS / editor noise ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
