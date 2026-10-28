@@ -1,0 +1,29 @@
+# Sentinel Shield gateway config. ${VARS} are expanded from the environment.
+listen: ":8080"
+admin_listen: "127.0.0.1:8081"
+admin_token: "${SENTINEL_ADMIN_TOKEN}"
+policy_file: "configs/policy.yaml"
+strict_headers: false        # set true once all your clients speak MCP 2026-07-28
+tool_separator: "__"         # exposed tool name = <backend>__<tool>
+
+auth:
+  hs256_secret: "${SENTINEL_HS256_SECRET}"   # >= 32 bytes; Phase 2 replaces this with Sentinel Identity JWKS
+  issuer: "https://identity.sentinel.local"
+  audience: "sentinel-shield"
+
+backends:
+  # Name is the verified server identity used for routing, pinning and cache keys.
+  - name: postgres
+    url: "http://127.0.0.1:9001/mcp"
+    protocol: "2026-07-28"
+    timeout: 30s
+  - name: web
+    url: "http://127.0.0.1:9002/mcp"
+    protocol: "2026-07-28"
+    timeout: 30s
+  # Example legacy (session-based) server:
+  # - name: github
+  #   url: "http://127.0.0.1:9003/mcp"
+  #   protocol: "2025-06-18"
+  #   headers:
+  #     Authorization: "Bearer ${GITHUB_MCP_TOKEN}"   # upstream credential, never the agent's token

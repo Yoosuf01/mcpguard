@@ -1,0 +1,55 @@
+version: "1"
+default_action: deny          # tools not listed for an agent are hidden and blocked
+
+global:
+  # Applied to every string in every tool call's arguments.
+  deny_arg_patterns:
+    - '(?i)\b(?:drop|truncate|alter)\s+(?:table|database|schema)\b'
+    - '(?i)\bdelete\s+from\b'
+    - '(?i)\brm\s+-[a-z]*r[a-z]*f?\b\s+/'
+    - '(?i)\b(?:curl|wget)\b[^|]*\|\s*(?:ba|z)?sh\b'
+  block_secrets_in_arguments: true     # credentials in args = likely exfiltration
+  mask_in_results: [credit_card, ssn, aws_access_key, github_token, private_key, jwt, openai_key, anthropic_key, slack_token, generic_api_key]
+  mask_in_arguments: []
+  egress:
+    block_private_networks: true       # 169.254.169.254, 10/8, 127/8, *.internal ...
+    deny_domains: ["pastebin.com", "*.ngrok.io", "*.ngrok-free.app", "webhook.site"]
+  discovery:
+    upstream_instructions: drop        # drop | wrap (MCP-2026-015)
+    max_instruction_chars: 4096
+    pin_instructions: true
+    pin_tool_definitions: true         # rug-pull protection
+    block_poisoned_tools: true
+  output_scanning:
+    on_injection: flag                 # flag | block | off
+
+agents:
+  - id: customer-support-bot
+    max_steps_per_session: 25
+    rate_limit_per_minute: 60
+    tools:
+      - name: postgres__query
+        require_scope: "db:read"
+        deny_arg_patterns:
+          - '(?i)\b(?:insert|update|grant|revoke)\b'
+      - name: postgres__execute
+        deny: true
+      - name: web__fetch
+      - name: slack__send_message
+        require_approval: true
+    egress:
+      allow_domains: ["docs.example.com", "*.zoho.com", "example.com"]
+
+  - id: crm-updater
+    max_steps_per_session: 15
+    tools:
+      - name: zoho__update_record
+        require_scope: "crm:update"
+        require_approval: true
+      - name: zoho__get_record
+        require_scope: "crm:read"
+
+  - id: "*"                            # fallback for unknown agents: read-only, tight budget
+    max_steps_per_session: 5
+    tools:
+      - name: web__fetch
