@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/your-org/sentinel/shield/internal/identity"
+	"github.com/Yoosuf01/sentinel/shield/internal/identity"
 )
 
 // AdminHandler exposes the human controls: approve/deny parked calls and the

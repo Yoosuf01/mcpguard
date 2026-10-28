@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/your-org/sentinel/shield/internal/guard"
-	"github.com/your-org/sentinel/shield/internal/hitl"
-	"github.com/your-org/sentinel/shield/internal/identity"
-	"github.com/your-org/sentinel/shield/internal/policy"
-	"github.com/your-org/sentinel/shield/internal/telemetry"
+	"github.com/Yoosuf01/sentinel/shield/internal/guard"
+	"github.com/Yoosuf01/sentinel/shield/internal/hitl"
+	"github.com/Yoosuf01/sentinel/shield/internal/identity"
+	"github.com/Yoosuf01/sentinel/shield/internal/policy"
+	"github.com/Yoosuf01/sentinel/shield/internal/telemetry"
 )
 
 var secret = []byte("test-secret-test-secret-test-secret!!")
@@ -160,4 +160,3 @@ func resultText(out map[string]any) (string, bool) {
 func call(name string, args map[string]any) map[string]any {
 	return map[string]any{"name": name, "arguments": args}
 }
-

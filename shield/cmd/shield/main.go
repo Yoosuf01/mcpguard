@@ -18,12 +18,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/your-org/sentinel/shield/internal/gateway"
-	"github.com/your-org/sentinel/shield/internal/guard"
-	"github.com/your-org/sentinel/shield/internal/hitl"
-	"github.com/your-org/sentinel/shield/internal/identity"
-	"github.com/your-org/sentinel/shield/internal/policy"
-	"github.com/your-org/sentinel/shield/internal/telemetry"
+	"github.com/Yoosuf01/sentinel/shield/internal/gateway"
+	"github.com/Yoosuf01/sentinel/shield/internal/guard"
+	"github.com/Yoosuf01/sentinel/shield/internal/hitl"
+	"github.com/Yoosuf01/sentinel/shield/internal/identity"
+	"github.com/Yoosuf01/sentinel/shield/internal/policy"
+	"github.com/Yoosuf01/sentinel/shield/internal/telemetry"
 	"gopkg.in/yaml.v3"
 )
 

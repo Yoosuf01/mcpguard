@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/your-org/sentinel/shield/internal/guard"
-	"github.com/your-org/sentinel/shield/internal/hitl"
-	"github.com/your-org/sentinel/shield/internal/identity"
+	"github.com/Yoosuf01/sentinel/shield/internal/guard"
+	"github.com/Yoosuf01/sentinel/shield/internal/hitl"
+	"github.com/Yoosuf01/sentinel/shield/internal/identity"
 )
 
 // Decision is the outcome of evaluating one step.

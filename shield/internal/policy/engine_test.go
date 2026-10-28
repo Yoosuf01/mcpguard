@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/your-org/sentinel/shield/internal/identity"
+	"github.com/Yoosuf01/sentinel/shield/internal/identity"
 )
 
 func loadTestPolicy(t *testing.T) *Engine {

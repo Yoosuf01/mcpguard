@@ -1,4 +1,4 @@
-module github.com/your-org/sentinel/shield
+module github.com/Yoosuf01/sentinel/shield
 
 go 1.23.4
 

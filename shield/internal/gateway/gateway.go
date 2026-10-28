@@ -21,12 +21,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/your-org/sentinel/shield/internal/cache"
-	"github.com/your-org/sentinel/shield/internal/guard"
-	"github.com/your-org/sentinel/shield/internal/identity"
-	"github.com/your-org/sentinel/shield/internal/mcp"
-	"github.com/your-org/sentinel/shield/internal/policy"
-	"github.com/your-org/sentinel/shield/internal/telemetry"
+	"github.com/Yoosuf01/sentinel/shield/internal/cache"
+	"github.com/Yoosuf01/sentinel/shield/internal/guard"
+	"github.com/Yoosuf01/sentinel/shield/internal/identity"
+	"github.com/Yoosuf01/sentinel/shield/internal/mcp"
+	"github.com/Yoosuf01/sentinel/shield/internal/policy"
+	"github.com/Yoosuf01/sentinel/shield/internal/telemetry"
 )
 
 const Version = "0.1.0"

@@ -10,7 +10,7 @@ import (
 	"path"
 	"regexp"
 
-	"github.com/your-org/sentinel/shield/internal/guard"
+	"github.com/Yoosuf01/sentinel/shield/internal/guard"
 	"gopkg.in/yaml.v3"
 )
 
