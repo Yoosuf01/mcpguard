@@ -43,6 +43,6 @@ agents:
 4. Human approval (last, so a human is never asked to approve what policy would deny)
 
 ## Decision semantics
-- Denials and pending approvals return a normal `CallToolResult` with `isError: true` and a reason, plus `_meta["dev.sentinel/decision"]` and `_meta["dev.sentinel/rule"]`.
+- Denials and pending approvals return a normal `CallToolResult` with `isError: true` and a reason, plus `_meta["dev.mcpguard/decision"]` and `_meta["dev.mcpguard/rule"]`.
 - Protocol problems return JSON-RPC errors; auth failures return HTTP 401 with `WWW-Authenticate`.
 - Approvals bind to `(session, tool, canonical args)` and are single-use.

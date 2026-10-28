@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Yoosuf01/sentinel/shield/internal/policy"
+	"github.com/Yoosuf01/mcpguard/shield/internal/policy"
 )
 
 // Discovery: MCP-2026-015 instructions never reach the model.

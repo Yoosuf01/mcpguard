@@ -1,4 +1,4 @@
-module github.com/Yoosuf01/sentinel/shield
+module github.com/Yoosuf01/mcpguard/shield
 
 go 1.23.4
 

@@ -1,4 +1,4 @@
-# Sentinel
+# MCPGuard
 
 Open-source control plane for AI agents: step-level policy, agent identity and sandboxed execution,
 in a single Go binary you can run in front of Claude Code or Cursor.
@@ -15,8 +15,8 @@ in a single Go binary you can run in front of Claude Code or Cursor.
 ```bash
 export PATH="$HOME/sdk/go/bin:$PATH"          # if Go lives in ~/sdk
 cd shield
-export SENTINEL_HS256_SECRET="dev-secret-change-me-dev-secret-change-me"
-export SENTINEL_ADMIN_TOKEN="dev-admin-token"
+export MCPGUARD_HS256_SECRET="dev-secret-change-me-dev-secret-change-me"
+export MCPGUARD_ADMIN_TOKEN="dev-admin-token"
 go test -race ./...
 ./examples/exploit-demo/demo.sh
 ```

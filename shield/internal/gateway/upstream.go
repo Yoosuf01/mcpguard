@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Yoosuf01/sentinel/shield/internal/mcp"
+	"github.com/Yoosuf01/mcpguard/shield/internal/mcp"
 )
 
 // Protocol revisions Shield knows how to speak upstream.

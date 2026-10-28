@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Yoosuf01/sentinel/shield/internal/guard"
-	"github.com/Yoosuf01/sentinel/shield/internal/hitl"
-	"github.com/Yoosuf01/sentinel/shield/internal/identity"
-	"github.com/Yoosuf01/sentinel/shield/internal/policy"
-	"github.com/Yoosuf01/sentinel/shield/internal/telemetry"
+	"github.com/Yoosuf01/mcpguard/shield/internal/guard"
+	"github.com/Yoosuf01/mcpguard/shield/internal/hitl"
+	"github.com/Yoosuf01/mcpguard/shield/internal/identity"
+	"github.com/Yoosuf01/mcpguard/shield/internal/policy"
+	"github.com/Yoosuf01/mcpguard/shield/internal/telemetry"
 )
 
 var secret = []byte("test-secret-test-secret-test-secret!!")

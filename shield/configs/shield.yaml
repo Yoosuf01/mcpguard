@@ -1,15 +1,15 @@
-# Sentinel Shield gateway config. ${VARS} are expanded from the environment.
+# MCPGuard Shield gateway config. ${VARS} are expanded from the environment.
 listen: ":8080"
 admin_listen: "127.0.0.1:8081"
-admin_token: "${SENTINEL_ADMIN_TOKEN}"
+admin_token: "${MCPGUARD_ADMIN_TOKEN}"
 policy_file: "configs/policy.yaml"
 strict_headers: false        # set true once all your clients speak MCP 2026-07-28
 tool_separator: "__"         # exposed tool name = <backend>__<tool>
 
 auth:
-  hs256_secret: "${SENTINEL_HS256_SECRET}"   # >= 32 bytes; Phase 2 replaces this with Sentinel Identity JWKS
-  issuer: "https://identity.sentinel.local"
-  audience: "sentinel-shield"
+  hs256_secret: "${MCPGUARD_HS256_SECRET}"   # >= 32 bytes; Phase 2 replaces this with Sentinel Identity JWKS
+  issuer: "https://identity.mcpguard.local"
+  audience: "mcpguard-shield"
 
 backends:
   # Name is the verified server identity used for routing, pinning and cache keys.

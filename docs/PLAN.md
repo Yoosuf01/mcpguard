@@ -1,4 +1,4 @@
-# Sentinel: Project Plan
+# MCPGuard: Project Plan
 
 Status as of **2026-10-29**. Source of truth for scope is [`BRIEF.md`](BRIEF.md); this file is the
 executable plan derived from it plus a review of the actual code.
@@ -107,4 +107,4 @@ Also referenced by the brief and worth cloning when needed: `themsquared/mcp-red
 1. Approve **Phase 0** as the first work (or tell me to jump straight to Backlog #1).
 2. Approve the two re-orderings (★ benchmarks earlier, ★ `dry_run` earlier).
 3. H4: per-caller upstream sessions (safer, more connections) vs documenting the shared session?
-4. Should I create the GitHub repo `Yoosuf01/sentinel` (needs your auth), or will you push?
+4. Should I create the GitHub repo `Yoosuf01/mcpguard` (needs your auth), or will you push?

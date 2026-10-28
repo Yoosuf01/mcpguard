@@ -1,4 +1,4 @@
-# Sentinel Shield
+# MCPGuard Shield
 
 Open-source zero-trust gateway for MCP agents: one Go binary that sits between your agent (Claude Code, Cursor, LangGraph...) and its MCP servers and evaluates **every step** of the agent loop.
 
@@ -10,10 +10,10 @@ Open-source zero-trust gateway for MCP agents: one Go binary that sits between y
 - One structured audit event per step
 
 ```bash
-export SENTINEL_HS256_SECRET="dev-secret-change-me-dev-secret-change-me"
-export SENTINEL_ADMIN_TOKEN="dev-admin-token"
+export MCPGUARD_HS256_SECRET="dev-secret-change-me-dev-secret-change-me"
+export MCPGUARD_ADMIN_TOKEN="dev-admin-token"
 go test -race ./...
 ./examples/exploit-demo/demo.sh
 ```
 
-See `../SENTINEL_BRIEF.md` for architecture, threat model, roadmap and the policy reference. License: Apache-2.0.
+See `../private-docs/SENTINEL_BRIEF.md` for architecture, threat model, roadmap and the policy reference. License: Apache-2.0.

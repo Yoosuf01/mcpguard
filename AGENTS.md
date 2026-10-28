@@ -1,4 +1,4 @@
-# AGENTS.md: instructions for AI coding agents working on Sentinel
+# AGENTS.md: instructions for AI coding agents working on MCPGuard
 
 Read `docs/BRIEF.md` fully, then `docs/PLAN.md`, before proposing changes.
 Then read every file under the component you will touch (start with `shield/`).

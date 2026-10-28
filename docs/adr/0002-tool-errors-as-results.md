@@ -9,7 +9,7 @@ retry blindly, sometimes with altered arguments.
 
 ## Decision
 Policy denials and pending approvals return a normal `CallToolResult` with `isError: true` and a
-human-readable reason, plus `_meta["dev.sentinel/decision"]` / `["dev.sentinel/rule"]`.
+human-readable reason, plus `_meta["dev.mcpguard/decision"]` / `["dev.mcpguard/rule"]`.
 Protocol problems (bad JSON, header mismatch, unknown method) stay JSON-RPC errors; auth failures are HTTP 401.
 
 ## Consequences
