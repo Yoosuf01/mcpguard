@@ -162,6 +162,14 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp = g.handleToolsList(ctx, p, req)
 	case "tools/call":
 		resp = g.handleToolsCall(ctx, p, req)
+	case "resources/list":
+		resp = g.handleResourcesList(ctx, p, req)
+	case "resources/read":
+		resp = g.handleResourcesRead(ctx, p, req)
+	case "prompts/list":
+		resp = g.handlePromptsList(ctx, p, req)
+	case "prompts/get":
+		resp = g.handlePromptsGet(ctx, p, req)
 	default:
 		resp = mcp.NewError(req.ID, mcp.CodeMethodNotFound, "method "+req.Method+" is not supported by Sentinel Shield v0.1", nil)
 	}
@@ -461,4 +469,195 @@ func deepCopy(m map[string]any) map[string]any {
 	var out map[string]any
 	_ = json.Unmarshal(b, &out)
 	return out
+}
+
+func (g *Gateway) handleResourcesList(ctx context.Context, p *identity.Principal, req *mcp.Request) *mcp.Response {
+	var all []map[string]any
+	for _, b := range g.sortedBackends() {
+		resp, err := g.up.call(ctx, b, "resources/list", nil, "")
+		if err != nil {
+			g.record(ctx, p, telemetry.Event{Kind: "resources/list", Backend: b.Name, Decision: "error", Reason: err.Error()})
+			continue
+		}
+		if resp == nil || resp.Result == nil {
+			continue
+		}
+		var result struct {
+			Resources []map[string]any `json:"resources"`
+		}
+		if err := json.Unmarshal(resp.Result, &result); err != nil {
+			continue
+		}
+		for _, r := range result.Resources {
+			if origName, ok := r["name"].(string); ok {
+				r["name"] = b.Name + g.opts.ToolSeparator + origName
+			}
+			all = append(all, r)
+		}
+	}
+	return mcp.NewResult(req.ID, map[string]any{"resources": all})
+}
+
+func (g *Gateway) handleResourcesRead(ctx context.Context, p *identity.Principal, req *mcp.Request) *mcp.Response {
+	start := time.Now()
+	var params struct {
+		URI string `json:"uri"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil || params.URI == "" {
+		return mcp.NewError(req.ID, mcp.CodeInvalidParams, "resources/read requires params.uri", nil)
+	}
+
+	ev := telemetry.Event{Kind: "resources/read", Tool: params.URI}
+	finish := func(resp *mcp.Response) *mcp.Response {
+		ev.Latency = time.Since(start)
+		g.record(ctx, p, ev)
+		return resp
+	}
+
+	// 1. Egress check on requested URI
+	if d, bad := g.engine.CheckEgressURI(p, params.URI); bad {
+		ev.Decision, ev.Rule, ev.Reason = "deny", d.Rule, d.Reason
+		return finish(mcp.NewResult(req.ID, mcp.ToolErrorResult("Blocked by Sentinel policy: "+d.Reason,
+			decisionMeta("deny", d.Rule, ""))))
+	}
+
+	// 2. Identify backend
+	var targetBackend *Backend
+	for _, b := range g.sortedBackends() {
+		if strings.Contains(params.URI, b.Name) {
+			targetBackend = b
+			break
+		}
+	}
+	if targetBackend == nil && len(g.backends) > 0 {
+		targetBackend = g.sortedBackends()[0]
+	}
+	if targetBackend == nil {
+		ev.Decision, ev.Rule, ev.Reason = "deny", "no_backend", "no backend configured for resources"
+		return finish(mcp.NewError(req.ID, mcp.CodeInvalidParams, "no backend configured for resources", nil))
+	}
+	ev.Backend = targetBackend.Name
+
+	resp, err := g.up.call(ctx, targetBackend, "resources/read", map[string]any{"uri": params.URI}, params.URI)
+	if err != nil {
+		ev.Decision, ev.Reason = "error", err.Error()
+		return finish(mcp.NewError(req.ID, mcp.CodeUpstream, "upstream "+targetBackend.Name+" unavailable", nil))
+	}
+	if resp.Error != nil {
+		return finish(&mcp.Response{JSONRPC: "2.0", ID: req.ID, Error: resp.Error})
+	}
+
+	pol := g.engine.Policy().File.Global
+	if len(pol.MaskInResults) > 0 {
+		var result map[string]any
+		if json.Unmarshal(resp.Result, &result) == nil {
+			red := guard.NewRedactor(pol.MaskInResults)
+			counts := map[string]int{}
+			result = red.RedactValue(result, counts).(map[string]any)
+			if len(counts) > 0 {
+				ev.Findings = append(ev.Findings, "masked_results:"+guard.Summarize(counts))
+			}
+			ev.Decision = "allow"
+			return finish(mcp.NewResult(req.ID, result))
+		}
+	}
+
+	ev.Decision = "allow"
+	return finish(resp)
+}
+
+func (g *Gateway) handlePromptsList(ctx context.Context, p *identity.Principal, req *mcp.Request) *mcp.Response {
+	var all []map[string]any
+	for _, b := range g.sortedBackends() {
+		resp, err := g.up.call(ctx, b, "prompts/list", nil, "")
+		if err != nil {
+			g.record(ctx, p, telemetry.Event{Kind: "prompts/list", Backend: b.Name, Decision: "error", Reason: err.Error()})
+			continue
+		}
+		if resp == nil || resp.Result == nil {
+			continue
+		}
+		var result struct {
+			Prompts []map[string]any `json:"prompts"`
+		}
+		if err := json.Unmarshal(resp.Result, &result); err != nil {
+			continue
+		}
+		for _, pr := range result.Prompts {
+			if origName, ok := pr["name"].(string); ok {
+				pr["name"] = b.Name + g.opts.ToolSeparator + origName
+			}
+			all = append(all, pr)
+		}
+	}
+	return mcp.NewResult(req.ID, map[string]any{"prompts": all})
+}
+
+func (g *Gateway) handlePromptsGet(ctx context.Context, p *identity.Principal, req *mcp.Request) *mcp.Response {
+	start := time.Now()
+	var params struct {
+		Name      string         `json:"name"`
+		Arguments map[string]any `json:"arguments"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil || params.Name == "" {
+		return mcp.NewError(req.ID, mcp.CodeInvalidParams, "prompts/get requires params.name", nil)
+	}
+
+	ev := telemetry.Event{Kind: "prompts/get", Tool: params.Name}
+	finish := func(resp *mcp.Response) *mcp.Response {
+		ev.Latency = time.Since(start)
+		g.record(ctx, p, ev)
+		return resp
+	}
+
+	backendName, promptName, ok := strings.Cut(params.Name, g.opts.ToolSeparator)
+	b := g.backends[backendName]
+	if !ok || b == nil || promptName == "" {
+		ev.Decision, ev.Rule, ev.Reason = "deny", "unknown_prompt", "no backend for prompt"
+		return finish(mcp.NewError(req.ID, mcp.CodeInvalidParams, "unknown prompt "+params.Name, nil))
+	}
+	ev.Backend = b.Name
+
+	d := g.engine.EvaluatePrompt(p, promptName, params.Arguments)
+	if d.Action == policy.Deny {
+		ev.Decision, ev.Rule, ev.Reason = "deny", d.Rule, d.Reason
+		return finish(mcp.NewResult(req.ID, mcp.ToolErrorResult("Blocked by Sentinel policy: "+d.Reason,
+			decisionMeta("deny", d.Rule, ""))))
+	}
+
+	resp, err := g.up.call(ctx, b, "prompts/get", map[string]any{"name": promptName, "arguments": params.Arguments}, promptName)
+	if err != nil {
+		ev.Decision, ev.Reason = "error", err.Error()
+		return finish(mcp.NewError(req.ID, mcp.CodeUpstream, "upstream "+b.Name+" unavailable", nil))
+	}
+	if resp.Error != nil {
+		return finish(&mcp.Response{JSONRPC: "2.0", ID: req.ID, Error: resp.Error})
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(resp.Result, &result); err == nil {
+		strs := guard.CollectStrings(result)
+		var fs []guard.Finding
+		for _, s := range strs {
+			fs = append(fs, guard.ScanInjection(s)...)
+		}
+		if len(fs) > 0 {
+			ev.Findings = append(ev.Findings, guard.FindingStrings(fs)...)
+			mode := g.engine.Policy().File.Global.OutputScanning.OnInjection
+			if mode == "block" {
+				ev.Decision, ev.Rule, ev.Reason = "deny", "prompt_injection", "prompt template contained instruction-like injection text"
+				return finish(mcp.NewResult(req.ID, mcp.ToolErrorResult(
+					"Blocked by Sentinel policy: prompt text contained injection markers and was withheld.",
+					decisionMeta("deny", "prompt_injection", ""))))
+			}
+			ev.Decision, ev.Rule = "flag", "prompt_injection"
+			result = flagUntrusted(result)
+		} else {
+			ev.Decision = "allow"
+		}
+		return finish(mcp.NewResult(req.ID, result))
+	}
+
+	ev.Decision = "allow"
+	return finish(resp)
 }

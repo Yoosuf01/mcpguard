@@ -281,3 +281,36 @@ func domainMatch(host string, patterns []string) bool {
 	}
 	return false
 }
+
+// CheckEgressURI validates a single URI against the global and agent-specific egress policies.
+func (e *Engine) CheckEgressURI(p *identity.Principal, rawURI string) (Decision, bool) {
+	pol := e.Policy()
+	a := pol.agent(p.AgentID)
+	eg := pol.File.Global.Egress
+	if a != nil && a.Egress != nil {
+		eg = mergeEgress(eg, *a.Egress)
+	}
+	return checkEgress(eg, []string{rawURI})
+}
+
+// EvaluatePrompt validates arguments for prompts/get steps (checking secrets and deny patterns).
+func (e *Engine) EvaluatePrompt(p *identity.Principal, prompt string, args map[string]any) Decision {
+	pol := e.Policy()
+	strs := guard.CollectStrings(args)
+	for _, s := range strs {
+		for _, re := range pol.globalDeny {
+			if re.MatchString(s) {
+				return Decision{Action: Deny, Rule: "deny_arg_pattern",
+					Reason: "prompt arguments match a blocked pattern: " + re.String()}
+			}
+		}
+	}
+	if pol.File.Global.BlockSecretsInArguments {
+		det := guard.NewRedactor([]string{"aws_access_key", "github_token", "private_key", "jwt", "openai_key", "anthropic_key", "slack_token"})
+		if kinds := det.Detect(args); len(kinds) > 0 {
+			return Decision{Action: Deny, Rule: "secret_in_arguments",
+				Reason: "prompt arguments contain credentials (" + strings.Join(kinds, ",") + ")"}
+		}
+	}
+	return Decision{Action: Allow, Rule: "allow"}
+}
