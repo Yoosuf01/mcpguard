@@ -45,6 +45,11 @@ type AuthConfig struct {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "pins" {
+		handlePinsCommand(os.Args[2:])
+		return
+	}
+
 	cfgPath := flag.String("config", "configs/shield.yaml", "path to shield.yaml")
 	mint := flag.Bool("mint", false, "print a dev agent token and exit")
 	agent := flag.String("agent", "customer-support-bot", "agent id for -mint")

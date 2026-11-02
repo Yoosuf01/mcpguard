@@ -3,7 +3,10 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/Yoosuf01/mcpguard/shield/internal/pins"
 
 	"github.com/Yoosuf01/mcpguard/shield/internal/hitl"
 	"github.com/Yoosuf01/mcpguard/shield/internal/policy"
@@ -127,5 +130,35 @@ default_action: deny
 
 	if engine.Policy().File.DefaultAction != policy.Deny {
 		t.Errorf("expected engine default_action deny after successful swap, got %s", engine.Policy().File.DefaultAction)
+	}
+}
+
+func TestPinsCLI_Operations(t *testing.T) {
+	tmpDir := t.TempDir()
+	pinsFile := filepath.Join(tmpDir, "test_pins.json")
+
+	store, err := pins.NewFileStore(pinsFile)
+	if err != nil {
+		t.Fatalf("failed to create FileStore: %v", err)
+	}
+
+	// 1. Set initial pin
+	store.Set("tool|github|create_issue", "sha256:orig123")
+
+	// 2. Generate diff
+	diff := pins.Diff("github", "create_issue", "sha256:orig123", "sha256:drift456")
+	if !strings.Contains(diff, "DRIFT DETECTED") {
+		t.Errorf("expected DRIFT DETECTED in diff, got: %s", diff)
+	}
+
+	// 3. Re-approve tool
+	if err := store.Approve("github", "create_issue", "sha256:drift456"); err != nil {
+		t.Fatalf("Approve failed: %v", err)
+	}
+
+	// 4. Verify approved
+	newDigest, ok := store.Get("tool|github|create_issue")
+	if !ok || newDigest != "sha256:drift456" {
+		t.Errorf("expected approved digest sha256:drift456, got %s", newDigest)
 	}
 }
