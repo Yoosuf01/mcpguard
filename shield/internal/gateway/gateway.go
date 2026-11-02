@@ -46,6 +46,8 @@ type Options struct {
 	SupportedVersions []string
 	// GatewayInstructions is Shield's own trusted text for the model.
 	GatewayInstructions string
+	// HMACSecret is used to sign and verify 1-click approval links.
+	HMACSecret string
 	MaxBodyBytes        int64
 	HTTPClient          *http.Client
 }

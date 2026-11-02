@@ -3,6 +3,7 @@ package gateway
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/Yoosuf01/mcpguard/shield/internal/notify"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -398,5 +399,44 @@ default_action: allow
 	txt, isErr := resultText(out)
 	if isErr || !strings.Contains(txt, "stdio response: success") {
 		t.Fatalf("expected stdio response success, got %s", txt)
+	}
+}
+
+func TestAdmin_SignedOneClickDecision(t *testing.T) {
+	h := newHarness(t, nil)
+	hmacSecret := "test-hmac-secret-12345"
+	h.gw.opts.HMACSecret = hmacSecret
+
+	// 1. Create a pending request
+	_, req := h.gw.engine.Approvals().Check("s_oneclick", "agent_1", "user_1", "wire/send", map[string]any{"amount": 100})
+	if req.Status != hitl.Pending {
+		t.Fatalf("expected pending status")
+	}
+
+	// 2. Generate signed approve link
+	n := notify.NewNotifier(notify.Config{
+		HMACSecret:    hmacSecret,
+		PublicBaseURL: "http://localhost:8081",
+	})
+	exp := time.Now().Add(10 * time.Minute)
+	link := n.SignLink(req.ID, "approve", exp)
+
+	// 3. Make GET request to the admin handler without bearer token (using HMAC signature)
+	adminHandler := h.gw.AdminHandler("admin-token", h.rev)
+	httpReq := httptest.NewRequest(http.MethodGet, link, nil)
+	rr := httptest.NewRecorder()
+	adminHandler.ServeHTTP(rr, httpReq)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for signed approval link, got %d: %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "APPROVED") {
+		t.Errorf("expected APPROVED in response body, got: %s", rr.Body.String())
+	}
+
+	// 4. Verify request status is now Approved
+	allowed, consumed := h.gw.engine.Approvals().Check("s_oneclick", "agent_1", "user_1", "wire/send", map[string]any{"amount": 100})
+	if !allowed || consumed.Status != hitl.Used {
+		t.Fatalf("expected tool call to be allowed and consumed after 1-click approval")
 	}
 }

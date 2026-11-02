@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	"fmt"
 	"github.com/Yoosuf01/mcpguard/shield/internal/identity"
+	"github.com/Yoosuf01/mcpguard/shield/internal/notify"
 )
 
 // AdminHandler exposes the human controls: approve/deny parked calls and the
@@ -50,5 +52,37 @@ func (g *Gateway) AdminHandler(adminToken string, rev identity.Revocations) http
 		rev.Revoke(r.Context(), body.SessionID)
 		writeJSON(w, http.StatusOK, map[string]any{"revoked": body.SessionID})
 	}))
+
+	// Signed 1-click decision endpoint for Slack/webhooks
+	mux.HandleFunc("GET /admin/approvals/{id}/decide", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		action := r.URL.Query().Get("action")
+		expStr := r.URL.Query().Get("exp")
+		sig := r.URL.Query().Get("sig")
+
+		if g.opts.HMACSecret == "" {
+			http.Error(w, "signed approval links not configured", http.StatusBadRequest)
+			return
+		}
+		n := notify.NewNotifier(notify.Config{HMACSecret: g.opts.HMACSecret})
+		if err := n.VerifyLink(id, action, expStr, sig); err != nil {
+			http.Error(w, "invalid or expired approval link: "+err.Error(), http.StatusForbidden)
+			return
+		}
+
+		approve := action == "approve"
+		req, ok := g.engine.Approvals().Decide(id, approve)
+		if !ok {
+			http.Error(w, "approval already resolved or not found", http.StatusNotFound)
+			return
+		}
+		statusText := "APPROVED"
+		if !approve {
+			statusText = "DENIED"
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(fmt.Sprintf(`<!DOCTYPE html><html><body style="font-family:sans-serif;padding:2rem;"><h2>MCPGuard Approval Decision</h2><p>Request <strong>%s</strong> for tool <code>%s</code> has been <strong>%s</strong>.</p></body></html>`, req.ID, req.Tool, statusText)))
+	})
+
 	return mux
 }
