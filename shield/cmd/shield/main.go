@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"errors"
+	"strings"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -60,7 +61,13 @@ func main() {
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	cfg, err := loadConfig(*cfgPath)
+	resolvedConfig := *cfgPath
+	if _, err := os.Stat(resolvedConfig); os.IsNotExist(err) && resolvedConfig == "configs/shield.yaml" {
+		if _, err := os.Stat("shield/configs/shield.yaml"); err == nil {
+			resolvedConfig = "shield/configs/shield.yaml"
+		}
+	}
+	cfg, err := loadConfig(resolvedConfig)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "config:", err)
 		os.Exit(1)
@@ -83,7 +90,13 @@ func main() {
 		return
 	}
 
-	pol, err := policy.LoadFile(cfg.PolicyFile)
+	resolvedPolicy := cfg.PolicyFile
+	if _, err := os.Stat(resolvedPolicy); os.IsNotExist(err) && strings.HasPrefix(resolvedPolicy, "configs/") {
+		if _, err := os.Stat("shield/" + resolvedPolicy); err == nil {
+			resolvedPolicy = "shield/" + resolvedPolicy
+		}
+	}
+	pol, err := policy.LoadFile(resolvedPolicy)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
