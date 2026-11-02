@@ -25,6 +25,7 @@ const (
 type File struct {
 	Version       string         `yaml:"version"`
 	DefaultAction Action         `yaml:"default_action"`
+	DryRun        bool           `yaml:"dry_run"`
 	Global        Global         `yaml:"global"`
 	Agents        []AgentProfile `yaml:"agents"`
 }
@@ -61,6 +62,7 @@ type AgentProfile struct {
 	ID                 string     `yaml:"id"` // matches Principal.AgentID; "*" is the fallback
 	MaxStepsPerSession int        `yaml:"max_steps_per_session"`
 	RateLimitPerMinute int        `yaml:"rate_limit_per_minute"`
+	DryRun             *bool      `yaml:"dry_run"`
 	Tools              []ToolRule `yaml:"tools"`
 	Egress             *Egress    `yaml:"egress"`
 }

@@ -4,6 +4,10 @@ Anchored on two open MCP spec issues: **MCP-2026-015** (server `instructions` fo
 prompt) and **MCP-2026-008** (`cacheScope` is declared by the server and not verified). These are spec
 issue IDs, not CVEs. Background: see section 2 of [`BRIEF.md`](BRIEF.md).
 
+## Operational Modes
+- **Enforcing (default)**: Violations return errors (`isError: true`) and drop or withhold malicious payload data.
+- **Dry-run (`dry_run: true`)**: Policy rules evaluate completely and emit audit/telemetry records tagged with `dry_run_deny` or `dry_run_pending`, but permit execution to proceed upstream. Used for enterprise adoption, baseline profiling, and non-blocking canary rollout.
+
 ## Controls C1-C4 (discovery)
 - **C1 Isolate**: upstream instructions never enter the trusted prompt region (dropped, or wrapped and labelled untrusted).
 - **C2 Cap**: hard 4,096-character limit.

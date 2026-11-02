@@ -348,6 +348,9 @@ func (g *Gateway) handleToolsCall(ctx context.Context, p *identity.Principal, re
 	// Step-level policy decision.
 	d := g.engine.Evaluate(p, params.Name, params.Arguments)
 	ev.Decision, ev.Rule, ev.Reason = string(d.Action), d.Rule, d.Reason
+	if d.DryRun {
+		ev.Decision = "dry_run_" + string(d.OriginalAction)
+	}
 	switch d.Action {
 	case policy.Deny:
 		return finish(mcp.NewResult(req.ID, mcp.ToolErrorResult("Blocked by Sentinel policy: "+d.Reason,

@@ -160,3 +160,45 @@ func resultText(out map[string]any) (string, bool) {
 func call(name string, args map[string]any) map[string]any {
 	return map[string]any{"name": name, "arguments": args}
 }
+
+func TestGateway_DryRunPermitsWithTelemetry(t *testing.T) {
+	h := newHarness(t, func(f *policy.File) {
+		f.DryRun = true
+	})
+
+	// Call with DROP TABLE
+	tok := token(t, "alice", "customer-support-bot", "s_dry", "db:read")
+	code, out := h.rpc(t, tok, "tools/call", call("postgres__query", map[string]any{"sql": "DROP TABLE users;"}),
+		map[string]string{"Mcp-Name": "postgres__query"})
+
+	if code != http.StatusOK {
+		t.Fatalf("expected 200 OK in dry_run mode, got %d: %v", code, out)
+	}
+
+	res, ok := out["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected result object in response: %v", out)
+	}
+	// Verify it reached upstream
+	if len(h.pg.calls) == 0 {
+		t.Fatal("expected tool call to reach upstream in dry_run mode")
+	}
+
+	// Verify telemetry recorded dry_run_deny
+	if len(h.rec.Events) == 0 {
+		t.Fatal("expected telemetry event")
+	}
+	lastEvent := h.rec.Events[len(h.rec.Events)-1]
+	if lastEvent.Decision != "dry_run_deny" {
+		t.Errorf("expected telemetry decision dry_run_deny, got %s", lastEvent.Decision)
+	}
+	if lastEvent.Rule != "deny_arg_pattern" {
+		t.Errorf("expected telemetry rule deny_arg_pattern, got %s", lastEvent.Rule)
+	}
+
+	// Verify response metadata reflects dry_run_deny
+	meta, _ := res["_meta"].(map[string]any)
+	if meta["dev.sentinel/decision"] != "dry_run_deny" {
+		t.Errorf("expected _meta decision dry_run_deny, got %v", meta["dev.sentinel/decision"])
+	}
+}

@@ -6,6 +6,7 @@ expanded at load. Hot reload with `kill -HUP <pid>`; an invalid file is rejected
 ```yaml
 version: "1"                  # required; only "1" is accepted
 default_action: deny          # deny (default) | allow. Unlisted tools are hidden AND blocked when deny.
+dry_run: false                # true: evaluate and log policy decisions (dry_run_deny/dry_run_pending) without blocking
 global:
   deny_arg_patterns: []       # regexes matched against every string (keys + values) in tool arguments
   block_secrets_in_arguments: true   # AWS/GitHub/OpenAI/Anthropic/Slack keys, JWTs, private keys => deny
@@ -26,6 +27,7 @@ global:
     on_injection: flag             # flag (default) | block | off
 agents:
   - id: customer-support-bot       # matches act.sub in the agent token; "*" is the fallback
+    dry_run: false                 # optional per-agent override for dry_run mode
     max_steps_per_session: 25      # every attempt counts (see threat-model G1)
     rate_limit_per_minute: 60
     egress: { allow_domains: ["docs.example.com"] }   # merged over global egress

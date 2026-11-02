@@ -16,10 +16,12 @@ import (
 
 // Decision is the outcome of evaluating one step.
 type Decision struct {
-	Action     Action
-	Rule       string // stable id for dashboards/alerts, e.g. "deny_arg_pattern"
-	Reason     string // human-readable, safe to show the model
-	ApprovalID string
+	Action         Action
+	Rule           string // stable id for dashboards/alerts, e.g. "deny_arg_pattern"
+	Reason         string // human-readable, safe to show the model
+	ApprovalID     string
+	DryRun         bool   // true if evaluated in dry_run simulation mode
+	OriginalAction Action // the underlying action that would have occurred without dry_run
 }
 
 // Counters tracks per-session steps and per-minute rate. In-memory for the
@@ -107,14 +109,27 @@ func (e *Engine) Evaluate(p *identity.Principal, tool string, args map[string]an
 	pol := e.Policy()
 	a := pol.agent(p.AgentID)
 
+	decide := func(d Decision) Decision {
+		dryRun := pol.File.DryRun
+		if a != nil && a.DryRun != nil {
+			dryRun = *a.DryRun
+		}
+		if dryRun && (d.Action == Deny || d.Action == Pending) {
+			d.DryRun = true
+			d.OriginalAction = d.Action
+			d.Action = Allow
+		}
+		return d
+	}
+
 	// 1. Runaway-loop breaker: every attempt counts, allowed or not.
 	steps := e.counters.step(p.SessionID)
 	if a != nil && a.MaxStepsPerSession > 0 && steps > a.MaxStepsPerSession {
-		return Decision{Action: Deny, Rule: "max_steps_per_session",
-			Reason: fmt.Sprintf("session exceeded %d tool calls; a human must start a new session", a.MaxStepsPerSession)}
+		return decide(Decision{Action: Deny, Rule: "max_steps_per_session",
+			Reason: fmt.Sprintf("session exceeded %d tool calls; a human must start a new session", a.MaxStepsPerSession)})
 	}
 	if a != nil && a.RateLimitPerMinute > 0 && e.counters.rate(p.SessionID) > a.RateLimitPerMinute {
-		return Decision{Action: Deny, Rule: "rate_limit", Reason: "rate limit exceeded for this agent session"}
+		return decide(Decision{Action: Deny, Rule: "rate_limit", Reason: "rate limit exceeded for this agent session"})
 	}
 
 	// 2. Is this tool allowed for this agent at all?
@@ -124,11 +139,11 @@ func (e *Engine) Evaluate(p *identity.Principal, tool string, args map[string]an
 	}
 	switch {
 	case rule == nil && pol.File.DefaultAction != Allow:
-		return Decision{Action: Deny, Rule: "tool_not_allowed", Reason: fmt.Sprintf("tool %q is not on this agent's allowlist", tool)}
+		return decide(Decision{Action: Deny, Rule: "tool_not_allowed", Reason: fmt.Sprintf("tool %q is not on this agent's allowlist", tool)})
 	case rule != nil && rule.Deny:
-		return Decision{Action: Deny, Rule: "tool_denied", Reason: fmt.Sprintf("tool %q is explicitly denied", tool)}
+		return decide(Decision{Action: Deny, Rule: "tool_denied", Reason: fmt.Sprintf("tool %q is explicitly denied", tool)})
 	case rule != nil && rule.RequireScope != "" && !p.HasScope(rule.RequireScope):
-		return Decision{Action: Deny, Rule: "missing_scope", Reason: fmt.Sprintf("agent token lacks scope %q", rule.RequireScope)}
+		return decide(Decision{Action: Deny, Rule: "missing_scope", Reason: fmt.Sprintf("agent token lacks scope %q", rule.RequireScope)})
 	}
 
 	// 3. Argument inspection.
@@ -140,16 +155,16 @@ func (e *Engine) Evaluate(p *identity.Principal, tool string, args map[string]an
 	for _, s := range strs {
 		for _, re := range patterns {
 			if re.MatchString(s) {
-				return Decision{Action: Deny, Rule: "deny_arg_pattern",
-					Reason: "arguments match a blocked pattern: " + re.String()}
+				return decide(Decision{Action: Deny, Rule: "deny_arg_pattern",
+					Reason: "arguments match a blocked pattern: " + re.String()})
 			}
 		}
 	}
 	if pol.File.Global.BlockSecretsInArguments {
 		det := guard.NewRedactor([]string{"aws_access_key", "github_token", "private_key", "jwt", "openai_key", "anthropic_key", "slack_token"})
 		if kinds := det.Detect(map[string]any(args)); len(kinds) > 0 {
-			return Decision{Action: Deny, Rule: "secret_in_arguments",
-				Reason: "arguments contain credentials (" + strings.Join(kinds, ",") + "); possible exfiltration"}
+			return decide(Decision{Action: Deny, Rule: "secret_in_arguments",
+				Reason: "arguments contain credentials (" + strings.Join(kinds, ",") + "); possible exfiltration"})
 		}
 	}
 	eg := pol.File.Global.Egress
@@ -157,7 +172,7 @@ func (e *Engine) Evaluate(p *identity.Principal, tool string, args map[string]an
 		eg = mergeEgress(eg, *a.Egress)
 	}
 	if d, bad := checkEgress(eg, strs); bad {
-		return d
+		return decide(d)
 	}
 
 	// 4. Human-in-the-loop.
@@ -165,14 +180,14 @@ func (e *Engine) Evaluate(p *identity.Principal, tool string, args map[string]an
 		ok, req := e.approvals.Check(p.SessionID, p.AgentID, p.Subject, tool, args)
 		if !ok {
 			if req.Status == hitl.Denied {
-				return Decision{Action: Deny, Rule: "approval_denied", Reason: "a human denied this exact call", ApprovalID: req.ID}
+				return decide(Decision{Action: Deny, Rule: "approval_denied", Reason: "a human denied this exact call", ApprovalID: req.ID})
 			}
-			return Decision{Action: Pending, Rule: "require_approval", ApprovalID: req.ID,
-				Reason: "this call needs human approval (id " + req.ID + "); retry the identical call after approval"}
+			return decide(Decision{Action: Pending, Rule: "require_approval", ApprovalID: req.ID,
+				Reason: "this call needs human approval (id " + req.ID + "); retry the identical call after approval"})
 		}
-		return Decision{Action: Allow, Rule: "approved_by_human", ApprovalID: req.ID}
+		return decide(Decision{Action: Allow, Rule: "approved_by_human", ApprovalID: req.ID})
 	}
-	return Decision{Action: Allow, Rule: "allow"}
+	return decide(Decision{Action: Allow, Rule: "allow"})
 }
 
 func mergeEgress(g, a Egress) Egress {

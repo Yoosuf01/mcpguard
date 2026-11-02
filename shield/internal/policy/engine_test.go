@@ -145,3 +145,60 @@ func TestDeniedAttemptsCountTowardSteps(t *testing.T) {
 		t.Fatalf("denied attempts must consume the step budget, got %+v", d)
 	}
 }
+
+func TestDryRunMode(t *testing.T) {
+	yamlPolicy := `
+version: "1"
+default_action: deny
+dry_run: true
+global:
+  deny_arg_patterns: ["DROP\\s+TABLE"]
+agents:
+  - id: audit-bot
+    tools:
+      - name: "db/run_query"
+        require_scope: "db:read"
+  - id: strict-bot
+    dry_run: false
+    tools:
+      - name: "db/run_query"
+        deny_patterns: ["DROP\\s+TABLE"]
+`
+	pol, err := Parse([]byte(yamlPolicy))
+	if err != nil {
+		t.Fatalf("failed to parse policy: %v", err)
+	}
+	engine := NewEngine(pol, nil)
+
+	// Global dry-run active: audit-bot attempts DROP TABLE (would be denied)
+	pAudit := &identity.Principal{AgentID: "audit-bot", SessionID: "s1", Scopes: []string{"db:read"}}
+	dAudit := engine.Evaluate(pAudit, "db/run_query", map[string]any{"sql": "DROP TABLE users"})
+	if dAudit.Action != Allow {
+		t.Errorf("expected Allow in dry_run mode, got %s", dAudit.Action)
+	}
+	if !dAudit.DryRun {
+		t.Error("expected DryRun=true on decision")
+	}
+	if dAudit.OriginalAction != Deny {
+		t.Errorf("expected OriginalAction Deny, got %s", dAudit.OriginalAction)
+	}
+	if dAudit.Rule != "deny_arg_pattern" {
+		t.Errorf("expected rule deny_arg_pattern, got %s", dAudit.Rule)
+	}
+
+	// Unlisted tool under global dry-run: allowed with dry_run=true, original=deny
+	dUnlisted := engine.Evaluate(pAudit, "unlisted_tool", nil)
+	if dUnlisted.Action != Allow || !dUnlisted.DryRun || dUnlisted.OriginalAction != Deny {
+		t.Errorf("expected Allow with DryRun=true for unlisted tool, got %+v", dUnlisted)
+	}
+
+	// Agent-specific override: strict-bot has dry_run: false
+	pStrict := &identity.Principal{AgentID: "strict-bot", SessionID: "s2"}
+	dStrict := engine.Evaluate(pStrict, "db/run_query", map[string]any{"sql": "DROP TABLE users"})
+	if dStrict.Action != Deny {
+		t.Errorf("expected Deny for strict-bot with dry_run: false override, got %s", dStrict.Action)
+	}
+	if dStrict.DryRun {
+		t.Error("expected DryRun=false when agent explicitly disables dry_run")
+	}
+}
