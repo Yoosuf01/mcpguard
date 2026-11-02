@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcpguard": {
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCPGUARD_TOKEN}",
+        "MCP-Protocol-Version": "2026-07-28"
+      }
+    }
+  }
+}

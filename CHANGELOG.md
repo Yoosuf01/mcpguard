@@ -5,40 +5,27 @@ Follows [SemVer](https://semver.org) and [Keep a Changelog](https://keepachangel
 
 ---
 
-## [Unreleased]
+## [0.1.0] – 2026-11-03
+
+First production-grade release of **MCPGuard** (Phase 1 Shield): an open-source security gateway and step-level policy engine for Model Context Protocol (MCP) servers.
 
 ### Added
-- `internal/errors`: typed domain error hierarchy (Code, Retryable, Unwrap)
-- `internal/requestid`: X-Request-ID correlation middleware
-- `internal/ratelimit`: sliding-window rate limiter (no double-burst at boundary)
-- `internal/config`: config loader with multi-error validation and env expansion
-- `internal/audit`: append-only JSON-lines audit writer
-- `internal/netutil`: NormalizeHost – canonicalize all non-standard IP encodings
-- `internal/middleware`: composable Chain, Recover, Timeout, CORS builders
-- `internal/health`: /healthz liveness and /readyz readiness handlers
-- `internal/version`: build-time metadata via ldflags
-- `Dockerfile` (multi-stage, distroless) + `docker-compose.yml`
-- `Makefile` with build/test/lint/docker/compose/mint-token targets
-- `CONTRIBUTING.md`, GitHub issue templates, PR template
-- `SECURITY.md`, `CODE_OF_CONDUCT.md`
-- ADR 0003 (sliding-window limiter), ADR 0004 (G1+G2 fixes)
-
-### Fixed
-- **G1** – Step counter now fires for *every* tool call, including unknown and
-  quarantined tools. Previously the counter was bypassed before `engine.Evaluate`
-  ran, allowing a misbehaving agent to exceed `max_steps_per_session` unbounded.
-- **G2** – Egress SSRF check now normalises non-canonical IP encodings
-  (decimal `2130706433`, hex `0x7f000001`, octal `0177.0.0.1`, short `127.1`,
-  trailing-dot, IPv6-mapped `::ffff:127.0.0.1`) before the private-network check.
-
-### Changed
-- Renamed: Sentinel → MCPGuard
-- Module: `github.com/Yoosuf01/sentinel` → `github.com/Yoosuf01/mcpguard`
-- Log keys: `sentinel.*` → `mcpguard.*`; env vars: `SENTINEL_*` → `MCPGUARD_*`
-
----
-
-## [0.1.0] – 2026-10-01
-
-Initial MCPGuard Shield baseline — JWT gateway, policy engine, discovery guard,
-HITL approvals, secret detection, output scanning, circuit breakers, hot-reload.
+- **Distributed Tracing**: OpenTelemetry (`go.opentelemetry.io/otel`) exporter with spans per `mcp.<method>` step and bidirectional W3C `traceparent` propagation.
+- **Audit Mode**: `dry_run: true` configuration mode for non-blocking policy evaluation and simulated telemetry.
+- **Distributed State**: Pluggable storage architecture (`internal/state`) supporting both memory with TTL auto-eviction (resolving session growth) and Redis multi-replica adapters for counters, revocations, pins, and approvals.
+- **Resources & Prompts Interception**: Proxying for `resources/*` (with SSRF and egress validation) and `prompts/*` (with secret detection and indirect injection scanning).
+- **Process Supervision**: `stdio` local MCP server child process execution with environment variable allowlisting and restart policies.
+- **Tool Pinning & Registry CLI**: Persistent `FileStore` registry with drift diffing and `mcpguard pins [list|diff|approve]` CLI.
+- **Approvals UX**: Real-time webhook notifications for pending HITL requests with HMAC-SHA256 signed 1-click decision URLs.
+- **Security Hardening**:
+  - Full IP canonicalization (`internal/netutil`) blocking decimal, octal, hex, short, and IPv4-mapped IPv6 SSRF bypasses.
+  - Step counter and sliding-window rate limit enforcement on every attempt, including unknown or quarantined tools (G1 fix).
+  - Discovery guard withholding server instructions injection (MCP-2026-015).
+  - Cross-caller cache partitioning preventing cache poisoning (MCP-2026-008).
+- **Packaging & Integrations**:
+  - `.goreleaser.yaml` cross-platform build definitions (Linux, macOS, Windows).
+  - Distroless multi-stage `Dockerfile` and `docker-compose.yml` with Prometheus and Jaeger.
+  - Integration guides and configurations for **Claude Code** and **Cursor**.
+- **Observability & Benchmarks**:
+  - Formal `go test -bench` suite: Gateway overhead < 0.07 ms / call (30x faster than target).
+  - Structured JSON logs, `/healthz` and `/readyz` endpoints.
