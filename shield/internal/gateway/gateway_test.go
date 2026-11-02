@@ -335,3 +335,68 @@ global:
 		t.Fatalf("expected prompt injection to be flagged with warning banner, got: %s", txt)
 	}
 }
+
+func TestGateway_StdioBackendExecution(t *testing.T) {
+	pythonMockMCP := `
+import sys, json
+
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    req = json.loads(line)
+    method = req.get("method")
+    req_id = req.get("id")
+    if method == "tools/list":
+        res = {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "tools": [{"name": "echo", "description": "Echoes text"}]
+            }
+        }
+        sys.stdout.write(json.dumps(res) + "\n")
+        sys.stdout.flush()
+    elif method == "tools/call":
+        res = {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "content": [{"type": "text", "text": "stdio response: success"}]
+            }
+        }
+        sys.stdout.write(json.dumps(res) + "\n")
+        sys.stdout.flush()
+`
+
+	pol, _ := policy.Parse([]byte(`
+version: "1"
+default_action: allow
+`))
+	engine := policy.NewEngine(pol, hitl.NewStore(time.Minute))
+	verifier := &identity.HS256Verifier{Secret: secret, Issuer: "iss", Audience: "shield"}
+
+	stdioBackend := &Backend{
+		Name:    "localproc",
+		Command: "python3",
+		Args:    []string{"-c", pythonMockMCP},
+	}
+	opts := Options{Backends: []*Backend{stdioBackend}}
+	gw := New(opts, engine, verifier, &telemetry.Memory{}, guard.NewMemoryPins())
+	h := &harness{gw: gw, rec: &telemetry.Memory{}}
+
+	tok := token(t, "alice", "customer-support-bot", "s_stdio", "db:read")
+
+	// Call tools/call on stdio backend
+	code, out := h.rpc(t, tok, "tools/call", call("localproc__echo", map[string]any{"msg": "hi"}),
+		map[string]string{"Mcp-Name": "localproc__echo"})
+
+	if code != http.StatusOK {
+		t.Fatalf("expected 200 OK for stdio backend call, got %d: %v", code, out)
+	}
+
+	txt, isErr := resultText(out)
+	if isErr || !strings.Contains(txt, "stdio response: success") {
+		t.Fatalf("expected stdio response success, got %s", txt)
+	}
+}

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Yoosuf01/mcpguard/shield/internal/mcp"
+	"github.com/Yoosuf01/mcpguard/shield/internal/stdio"
 	"go.opentelemetry.io/otel/propagation"
 )
 
@@ -33,6 +34,13 @@ type Backend struct {
 	Headers  map[string]string `yaml:"headers"`  // upstream credentials; NEVER the client's token
 	Timeout  time.Duration     `yaml:"timeout"`
 
+	// stdio process backend fields
+	Command       string   `yaml:"command"`
+	Args          []string `yaml:"args"`
+	Env           []string `yaml:"env"`
+	RestartPolicy string   `yaml:"restart_policy"`
+
+	proc         *stdio.Process
 	mu           sync.Mutex
 	sessionID    string
 	instructions string
@@ -54,6 +62,21 @@ func (u *upstream) id(b *Backend) json.RawMessage {
 
 // call sends one JSON-RPC request upstream and returns the decoded response.
 func (u *upstream) call(ctx context.Context, b *Backend, method string, params any, name string) (*mcp.Response, error) {
+	if b.Command != "" {
+		b.mu.Lock()
+		if b.proc == nil {
+			b.proc = stdio.NewProcess(stdio.Config{
+				Command:       b.Command,
+				Args:          b.Args,
+				Env:           b.Env,
+				RestartPolicy: b.RestartPolicy,
+			})
+		}
+		proc := b.proc
+		b.mu.Unlock()
+		return proc.Call(ctx, method, params)
+	}
+
 	if until := b.openUntil.Load(); until > 0 && time.Now().UnixNano() < until {
 		return nil, errCircuitOpen
 	}
