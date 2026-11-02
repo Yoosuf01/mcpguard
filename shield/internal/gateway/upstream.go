@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/Yoosuf01/mcpguard/shield/internal/mcp"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // Protocol revisions Shield knows how to speak upstream.
@@ -100,6 +101,7 @@ func (u *upstream) do(ctx context.Context, b *Backend, method string, params any
 	if err != nil {
 		return nil, 0, err
 	}
+	propagation.TraceContext{}.Inject(ctx, propagation.HeaderCarrier(hreq.Header))
 	hreq.Header.Set("Content-Type", "application/json")
 	hreq.Header.Set("Accept", "application/json, text/event-stream")
 	proto := b.Protocol

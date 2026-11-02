@@ -202,3 +202,46 @@ func TestGateway_DryRunPermitsWithTelemetry(t *testing.T) {
 		t.Errorf("expected _meta decision dry_run_deny, got %v", meta["dev.sentinel/decision"])
 	}
 }
+
+func TestGateway_TraceparentPropagatedToUpstream(t *testing.T) {
+	var receivedTraceparent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedTraceparent = r.Header.Get("traceparent")
+		var req upstreamRPC
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": map[string]any{"status": "ok"}})
+	}))
+	defer srv.Close()
+
+	pol, _ := policy.Parse([]byte(`
+version: "1"
+default_action: allow
+`))
+	engine := policy.NewEngine(pol, hitl.NewStore(time.Minute))
+	verifier := &identity.HS256Verifier{Secret: secret, Issuer: "iss", Audience: "shield"}
+	opts := Options{Backends: []*Backend{{Name: "mock", URL: srv.URL}}}
+	gw := New(opts, engine, verifier, &telemetry.Memory{}, guard.NewMemoryPins())
+
+	tok := token(t, "alice", "customer-support-bot", "s_trace", "db:read")
+	body, _ := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params":  call("mock__test", nil),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("MCP-Protocol-Version", ProtoStateless)
+	req.Header.Set("Mcp-Name", "mock__test")
+	clientTraceparent := "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+	req.Header.Set("traceparent", clientTraceparent)
+
+	rr := httptest.NewRecorder()
+	gw.ServeHTTP(rr, req)
+
+	if !strings.HasPrefix(receivedTraceparent, "00-4bf92f3577b34da6a3ce929d0e0e4736-") {
+		t.Errorf("expected upstream to receive traceparent with trace ID 4bf92f3577b34da6a3ce929d0e0e4736, got %s (code=%d body=%s)", receivedTraceparent, rr.Code, rr.Body.String())
+	}
+}

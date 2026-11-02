@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestMemoryRecorder(t *testing.T) {
@@ -62,4 +64,23 @@ func TestSlogRecorder(t *testing.T) {
 	if !strings.Contains(out, `"kind":"discovery"`) || !strings.Contains(out, `"backend":"weather"`) {
 		t.Errorf("expected structured JSON log with event attributes, got: %s", out)
 	}
+}
+
+func TestOTelRecorder(t *testing.T) {
+	tp := noop.NewTracerProvider()
+	rec := NewOTelRecorder(tp.Tracer("test"))
+
+	ev := Event{
+		Kind:     "tools/call",
+		AgentID:  "agent-otel",
+		Backend:  "postgres",
+		Tool:     "query",
+		Decision: "deny",
+		Rule:     "deny_arg_pattern",
+		Reason:   "drop table",
+		Latency:  5 * time.Millisecond,
+		Findings: []string{"sql_injection"},
+	}
+
+	rec.Record(context.Background(), ev)
 }

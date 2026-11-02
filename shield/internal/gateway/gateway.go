@@ -27,6 +27,7 @@ import (
 	"github.com/Yoosuf01/mcpguard/shield/internal/mcp"
 	"github.com/Yoosuf01/mcpguard/shield/internal/policy"
 	"github.com/Yoosuf01/mcpguard/shield/internal/telemetry"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 const Version = "0.1.0"
@@ -109,7 +110,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Shield v0.1 supports POST only (no standalone GET stream)", http.StatusMethodNotAllowed)
 		return
 	}
-	ctx := r.Context()
+	ctx := propagation.TraceContext{}.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 
 	// 1. Authenticate. The agent's token is consumed here and NEVER forwarded
 	// upstream (token passthrough is an MCP anti-pattern).

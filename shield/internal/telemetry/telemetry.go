@@ -7,6 +7,11 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Event struct {
@@ -17,7 +22,7 @@ type Event struct {
 	SessionID string
 	Backend   string
 	Tool      string
-	Decision  string // allow | deny | pending | flag | redact | error
+	Decision  string // allow | deny | pending | flag | redact | error | dry_run_deny | dry_run_pending
 	Rule      string
 	Reason    string
 	Latency   time.Duration
@@ -47,6 +52,52 @@ func (r SlogRecorder) Record(ctx context.Context, e Event) {
 		slog.Int64("latency_ms", e.Latency.Milliseconds()),
 		slog.Any("findings", e.Findings),
 	)
+}
+
+// OTelRecorder records events as OpenTelemetry spans.
+type OTelRecorder struct {
+	Tracer trace.Tracer
+}
+
+func NewOTelRecorder(tracer trace.Tracer) *OTelRecorder {
+	if tracer == nil {
+		tracer = otel.GetTracerProvider().Tracer("github.com/Yoosuf01/mcpguard/shield")
+	}
+	return &OTelRecorder{Tracer: tracer}
+}
+
+func (r *OTelRecorder) Record(ctx context.Context, e Event) {
+	if r.Tracer == nil {
+		return
+	}
+	spanName := "mcp." + e.Kind
+	startTime := e.Time
+	if startTime.IsZero() {
+		startTime = time.Now().Add(-e.Latency)
+	}
+	endTime := startTime.Add(e.Latency)
+
+	_, span := r.Tracer.Start(ctx, spanName,
+		trace.WithTimestamp(startTime),
+		trace.WithAttributes(
+			attribute.String("sentinel.agent_id", e.AgentID),
+			attribute.String("sentinel.subject", e.Subject),
+			attribute.String("sentinel.session_id", e.SessionID),
+			attribute.String("sentinel.backend", e.Backend),
+			attribute.String("sentinel.tool", e.Tool),
+			attribute.String("sentinel.decision", e.Decision),
+			attribute.String("sentinel.rule", e.Rule),
+			attribute.String("sentinel.reason", e.Reason),
+			attribute.Int64("sentinel.latency_ms", e.Latency.Milliseconds()),
+			attribute.StringSlice("sentinel.findings", e.Findings),
+		),
+	)
+	if e.Decision == "deny" || e.Decision == "error" {
+		span.SetStatus(codes.Error, e.Reason)
+	} else {
+		span.SetStatus(codes.Ok, "")
+	}
+	span.End(trace.WithTimestamp(endTime))
 }
 
 // Multi fans an event out to several recorders (e.g. logs + OTel + audit DB).
