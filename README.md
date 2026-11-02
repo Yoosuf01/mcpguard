@@ -110,6 +110,17 @@ agents:
         require_approval: true   # always requires human approval
 ```
 
+## Performance Benchmarks
+
+Measured on Apple M4 using `go test -bench=. -benchmem`:
+
+| Benchmark | Latency | Memory / Op | Target | Status |
+|---|---|---|---|---|
+| **Step-Level Policy Evaluation** (`BenchmarkPolicy_Evaluate`) | **12.3 µs** (0.012 ms) | 1.98 KB | < 1 ms | ✅ 80x faster than target |
+| **Full Gateway Request Interception** (`BenchmarkGateway_AllowedCall`) | **66.2 µs** (0.066 ms) | 36.5 KB | < 2 ms | ✅ 30x faster than target |
+
+> MCPGuard adds **less than 0.07 ms of overhead** to an end-to-end tool call while enforcing step limits, rate limits, secret detection, IP canonicalization/SSRF filters, and OpenTelemetry trace propagation.
+
 ## Observability
 
 | Surface | Where |
@@ -121,12 +132,17 @@ agents:
 
 ## Roadmap
 
-- [ ] JWKS / OIDC token verification
-- [ ] OPA/Rego policy backend  
-- [ ] Persistent audit log (PostgreSQL / S3)
-- [ ] Kubernetes operator + Helm chart
-- [ ] WebSocket/SSE MCP transport
-- [ ] Admin dashboard UI
+- [x] OpenTelemetry distributed tracing & W3C traceparent propagation
+- [x] `dry_run: true` monitor/audit mode
+- [x] Pluggable distributed state (in-memory with TTL eviction + Redis multi-replica adapters)
+- [x] Proxying `resources/*` (egress checking) and `prompts/*` (injection scanning)
+- [x] Local `stdio` process supervision with environment variable allowlisting
+- [x] Persistent tool pinning registry with CLI diff & re-approval (`mcpguard pins`)
+- [x] Webhook notifications for HITL approvals with HMAC-signed 1-click decision URLs
+- [ ] JWKS / OIDC dynamic token verification (Phase 2)
+- [ ] Embedded OPA/Rego policy backend (Phase 1b)
+- [ ] Firecracker microVM isolated sandboxed tool execution (Phase 3)
+- [ ] Web Admin dashboard UI & Console (Phase 4)
 
 ## Contributing & Security
 
