@@ -9,13 +9,13 @@ package main
 import (
 	"context"
 	"errors"
-	"strings"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -48,6 +48,10 @@ type AuthConfig struct {
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "pins" {
 		handlePinsCommand(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "policy" {
+		handlePolicyCommand(os.Args[2:])
 		return
 	}
 

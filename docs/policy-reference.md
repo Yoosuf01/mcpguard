@@ -48,3 +48,43 @@ agents:
 - Denials and pending approvals return a normal `CallToolResult` with `isError: true` and a reason, plus `_meta["dev.mcpguard/decision"]` and `_meta["dev.mcpguard/rule"]`.
 - Protocol problems return JSON-RPC errors; auth failures return HTTP 401 with `WWW-Authenticate`.
 - Approvals bind to `(session, tool, canonical args)` and are single-use.
+
+## Policy-as-Code: Embedded OPA / Rego Engine & Compiler (Phase 1b)
+
+MCPGuard includes an embedded Open Policy Agent (OPA) engine running native Rego v1, alongside the native Go evaluator.
+
+### 1. Compile Declarative YAML to Native Rego
+```bash
+mcpguard policy compile configs/policy.yaml -o configs/policy.rego
+```
+The compiler transforms declarative YAML profiles into deterministic Rego rules (`package mcpguard.policy`) evaluating against the standard step input document:
+- `input.principal`: `{subject, agent_id, session_id, scopes}`
+- `input.tool`: tool name (e.g., `postgres__query`)
+- `input.arguments`: tool arguments object
+- `input.counters`: `{steps, rate}`
+
+### 2. Testing Policies with Fixtures CLI
+```bash
+# Test YAML or Rego policy against test fixture assertions
+mcpguard policy test configs/policy.yaml configs/policy_test.json
+mcpguard policy test configs/policy.rego configs/policy_test.json
+```
+The test command evaluates each fixture assertion, displaying execution duration, action, and rule matches:
+```
+=== Evaluating Policy: configs/policy.yaml (17 test cases) ===
+✓ PASS [0.60ms] read query allowed (allow / allow)
+✓ PASS [0.11ms] DROP TABLE blocked (deny / deny_arg_pattern)
+...
+Results: 17 passed, 0 failed in 2.53ms
+```
+
+### 3. Conformance Suite
+The conformance test suite (`shield/internal/policy/conformance_test.go`) evaluates all security invariants across both the Go engine and the Rego engine, proving 100% parity across:
+- Runaway breaker step counters (`max_steps_per_session`)
+- Tool namespace allowlisting & explicit denies (`tool_denied`, `tool_not_allowed`)
+- Scoped token verification (`missing_scope`)
+- Deny argument regex patterns (`deny_arg_pattern`)
+- Credential exfiltration prevention (`secret_in_arguments`)
+- SSRF and domain egress controls (`egress_private_network`, `egress_deny_domain`, `egress_not_allowlisted`, `egress_scheme`)
+- Human approval requirements (`require_approval`)
+- Simulation mode (`dry_run: true`)

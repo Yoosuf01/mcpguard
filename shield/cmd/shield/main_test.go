@@ -162,3 +162,61 @@ func TestPinsCLI_Operations(t *testing.T) {
 		t.Errorf("expected approved digest sha256:drift456, got %s", newDigest)
 	}
 }
+
+func TestPolicyCLI_CompileAndTest(t *testing.T) {
+	yamlPolicy := `
+version: "1"
+default_action: deny
+global:
+  deny_arg_patterns:
+    - '(?i)\bdelete\s+from\b'
+agents:
+  - id: test-bot
+    tools:
+      - name: "db__read"
+        require_scope: "db:read"
+`
+	tmpDir := t.TempDir()
+	yamlFile := filepath.Join(tmpDir, "policy.yaml")
+	if err := os.WriteFile(yamlFile, []byte(yamlPolicy), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	regoOutFile := filepath.Join(tmpDir, "policy.rego")
+	runPolicyCompile(yamlFile, regoOutFile)
+
+	regoBytes, err := os.ReadFile(regoOutFile)
+	if err != nil {
+		t.Fatalf("failed to read compiled rego output: %v", err)
+	}
+	if !strings.Contains(string(regoBytes), "package mcpguard.policy") {
+		t.Errorf("expected package mcpguard.policy in compiled rego")
+	}
+
+	fixtures := `[
+  {
+    "name": "db read allowed with scope",
+    "principal": {"subject": "bob", "agent_id": "test-bot", "scopes": ["db:read"]},
+    "tool": "db__read",
+    "arguments": {"q": "select 1"},
+    "expected": {"action": "allow", "rule": "allow"}
+  },
+  {
+    "name": "delete from blocked",
+    "principal": {"subject": "bob", "agent_id": "test-bot", "scopes": ["db:read"]},
+    "tool": "db__read",
+    "arguments": {"q": "delete from users"},
+    "expected": {"action": "deny", "rule": "deny_arg_pattern"}
+  }
+]`
+	fixFile := filepath.Join(tmpDir, "fixtures.json")
+	if err := os.WriteFile(fixFile, []byte(fixtures), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test with compiled rego and fixtures
+	runPolicyTest(regoOutFile, fixFile)
+
+	// Test with source YAML and fixtures directly
+	runPolicyTest(yamlFile, fixFile)
+}

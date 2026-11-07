@@ -46,3 +46,9 @@ See H1-H7 in [`PLAN.md`](PLAN.md#read-from-the-code-not-yet-reproduced-treat-as-
 - Egress checks inspect URLs and IP literals in arguments; they do not resolve DNS (DNS rebinding is closed by the Sandbox egress proxy in Phase 3).
 - Pins are trust-on-first-use.
 - v0.1 handles POST JSON-RPC only (no standalone GET SSE stream); supports `tools/*`, discovery and `ping`.
+
+## Policy-as-Code Evaluation Engine (Phase 1b)
+- **Embedded OPA / Rego Runtime**: Evaluates step-level decisions via native Open Policy Agent Go runtime (`github.com/open-policy-agent/opa/rego`).
+- **Declarative YAML to Native Rego Compiler**: Converts `policy.yaml` into strict Rego v1 code (`mcpguard policy compile`).
+- **Policy Testing CLI**: `mcpguard policy test <policy.yaml|policy.rego> [fixtures.json]` executes pre-deployment validation against threat scenarios and fixtures.
+- **Conformance Parity**: Conformance test suite proves 100% equivalence between YAML evaluation and native Rego evaluation across all 17 security invariant test cases.

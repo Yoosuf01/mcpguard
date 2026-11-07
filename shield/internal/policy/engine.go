@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -66,8 +67,22 @@ func (c *Counters) rate(session string) int {
 type Engine struct {
 	mu        sync.RWMutex
 	pol       *Compiled
+	rego      *RegoEngine
 	counters  *Counters
 	approvals *hitl.Store
+}
+
+func (e *Engine) WithRego(r *RegoEngine) *Engine {
+	e.mu.Lock()
+	e.rego = r
+	e.mu.Unlock()
+	return e
+}
+
+func (e *Engine) RegoEngine() *RegoEngine {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.rego
 }
 
 func NewEngine(p *Compiled, approvals *hitl.Store) *Engine {
@@ -106,6 +121,39 @@ func (e *Engine) ToolVisible(p *identity.Principal, tool string) bool {
 // circuit breakers first; argument inspection next; human approval last so a
 // human is never asked to approve something policy would deny anyway.
 func (e *Engine) Evaluate(p *identity.Principal, tool string, args map[string]any) Decision {
+	e.mu.RLock()
+	regoEng := e.rego
+	e.mu.RUnlock()
+
+	if regoEng != nil {
+		steps := e.counters.step(p.SessionID)
+		rate := e.counters.rate(p.SessionID)
+		dec, err := regoEng.Evaluate(context.Background(), p, tool, args, steps, rate)
+		if err != nil {
+			return Decision{Action: Deny, Rule: "rego_eval_error", Reason: err.Error()}
+		}
+		if dec.Action == Pending && dec.Rule == "require_approval" && e.approvals != nil {
+			ok, req := e.approvals.Check(p.SessionID, p.AgentID, p.Subject, tool, args)
+			if !ok {
+				if req.Status == hitl.Denied {
+					dec.Action = Deny
+					dec.Rule = "approval_denied"
+					dec.Reason = "a human denied this exact call"
+					dec.ApprovalID = req.ID
+					return dec
+				}
+				dec.ApprovalID = req.ID
+				dec.Reason = "this call needs human approval (id " + req.ID + "); retry the identical call after approval"
+				return dec
+			}
+			dec.Action = Allow
+			dec.Rule = "approved_by_human"
+			dec.ApprovalID = req.ID
+			return dec
+		}
+		return dec
+	}
+
 	pol := e.Policy()
 	a := pol.agent(p.AgentID)
 
