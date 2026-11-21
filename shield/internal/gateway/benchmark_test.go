@@ -3,10 +3,10 @@ package gateway
 import (
 	"bytes"
 	"encoding/json"
-	"strings"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 

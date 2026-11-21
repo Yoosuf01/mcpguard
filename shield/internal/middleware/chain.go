@@ -67,7 +67,9 @@ func Timeout(d time.Duration) Func {
 // Pass "*" in origins to allow any origin.
 func CORS(origins []string) Func {
 	allowed := make(map[string]bool, len(origins))
-	for _, o := range origins { allowed[o] = true }
+	for _, o := range origins {
+		allowed[o] = true
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if o := r.Header.Get("Origin"); allowed["*"] || allowed[o] {

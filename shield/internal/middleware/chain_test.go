@@ -49,7 +49,7 @@ func TestRecover(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	h := middleware.New(middleware.Timeout(10*time.Millisecond)).Then(
+	h := middleware.New(middleware.Timeout(10 * time.Millisecond)).Then(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { <-r.Context().Done() }),
 	)
 	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))

@@ -6,6 +6,7 @@ package telemetry
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -113,3 +114,40 @@ func (m Multi) Record(ctx context.Context, e Event) {
 type Memory struct{ Events []Event }
 
 func (m *Memory) Record(_ context.Context, e Event) { m.Events = append(m.Events, e) }
+
+// RingBuffer keeps the last N events in a thread-safe circular buffer for the admin console.
+type RingBuffer struct {
+	mu       sync.RWMutex
+	events   []Event
+	capacity int
+}
+
+func NewRingBuffer(capacity int) *RingBuffer {
+	if capacity <= 0 {
+		capacity = 250
+	}
+	return &RingBuffer{
+		events:   make([]Event, 0, capacity),
+		capacity: capacity,
+	}
+}
+
+func (b *RingBuffer) Record(_ context.Context, e Event) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if e.Time.IsZero() {
+		e.Time = time.Now()
+	}
+	if len(b.events) >= b.capacity {
+		b.events = b.events[1:]
+	}
+	b.events = append(b.events, e)
+}
+
+func (b *RingBuffer) Events() []Event {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	res := make([]Event, len(b.events))
+	copy(res, b.events)
+	return res
+}

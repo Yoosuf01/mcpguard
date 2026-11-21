@@ -34,9 +34,15 @@ func TestSlidingWindow(t *testing.T) {
 
 func TestIsolatedKeys(t *testing.T) {
 	l := ratelimit.New(1, time.Minute)
-	if !l.Allow("alice") { t.Fatal("alice 1st") }
-	if !l.Allow("bob")   { t.Fatal("bob 1st – independent window") }
-	if l.Allow("alice")  { t.Fatal("alice 2nd should be denied") }
+	if !l.Allow("alice") {
+		t.Fatal("alice 1st")
+	}
+	if !l.Allow("bob") {
+		t.Fatal("bob 1st – independent window")
+	}
+	if l.Allow("alice") {
+		t.Fatal("alice 2nd should be denied")
+	}
 }
 
 func TestRemaining(t *testing.T) {

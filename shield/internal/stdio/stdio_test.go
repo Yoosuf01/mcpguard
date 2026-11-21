@@ -44,9 +44,9 @@ for line in sys.stdin:
 `
 
 	proc := NewProcess(Config{
-		Command:      "python3",
-		Args:         []string{"-c", pythonScript},
-		Env:          []string{"ALLOWED_APP_VAR"},
+		Command:       "python3",
+		Args:          []string{"-c", pythonScript},
+		Env:           []string{"ALLOWED_APP_VAR"},
 		RestartPolicy: "never",
 	})
 	defer proc.Close()

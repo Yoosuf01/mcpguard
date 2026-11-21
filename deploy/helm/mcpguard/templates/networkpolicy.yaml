@@ -1,0 +1,71 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcpguard.fullname" . }}
+  labels:
+    {{- include "mcpguard.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "mcpguard.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # 1. Allow MCP Gateway traffic (port 8080) from callers
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.service.mcpPort }}
+    # 2. Allow Admin/Metrics scraping (port 8081) from monitoring namespace
+    {{- if .Values.networkPolicy.allowPrometheusScraping }}
+    - ports:
+        - protocol: TCP
+          port: {{ .Values.service.adminPort }}
+      from:
+        {{- if .Values.networkPolicy.prometheusNamespace }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.prometheusNamespace }}
+        {{- else }}
+        - podSelector: {}
+        {{- end }}
+    {{- end }}
+  egress:
+    # 1. Allow DNS resolution
+    {{- if .Values.networkPolicy.egress.allowDns }}
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- end }}
+    # 2. Allow Redis access
+    {{- if .Values.networkPolicy.egress.allowRedis }}
+    - ports:
+        - protocol: TCP
+          port: 6379
+    {{- end }}
+    # 3. Allow Postgres access
+    {{- if .Values.networkPolicy.egress.allowPostgres }}
+    - ports:
+        - protocol: TCP
+          port: 5432
+    {{- end }}
+    # 4. Outbound HTTP/HTTPS with cloud metadata (169.254.169.254) blocked
+    {{- if .Values.networkPolicy.egress.allowExternalHttp }}
+    - ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+      to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            {{- if .Values.networkPolicy.egress.blockMetadata }}
+            except:
+              - 169.254.169.254/32
+            {{- end }}
+    {{- end }}
+{{- end }}
+

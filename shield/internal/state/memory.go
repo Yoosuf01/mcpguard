@@ -10,11 +10,11 @@ import (
 
 // MemoryCounters implements CounterStore with TTL-based session eviction to prevent unbounded memory growth.
 type MemoryCounters struct {
-	mu       sync.Mutex
-	steps    map[string]stepEntry
-	window   map[string]rateEntry
-	ttl      time.Duration
-	now      func() time.Time
+	mu        sync.Mutex
+	steps     map[string]stepEntry
+	window    map[string]rateEntry
+	ttl       time.Duration
+	now       func() time.Time
 	lastEvict time.Time
 }
 

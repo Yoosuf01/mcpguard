@@ -53,6 +53,42 @@ func (g *Gateway) AdminHandler(adminToken string, rev identity.Revocations) http
 		writeJSON(w, http.StatusOK, map[string]any{"revoked": body.SessionID})
 	}))
 
+	// Sentinel Console (HTML5 single-page application)
+	serveConsole := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; style-src 'unsafe-inline'")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(ConsoleHTML))
+	}
+	mux.HandleFunc("GET /admin/console", serveConsole)
+	mux.HandleFunc("GET /admin/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/admin/" || r.URL.Path == "/admin" {
+			serveConsole(w, r)
+			return
+		}
+		http.NotFound(w, r)
+	})
+
+	// Audit trail endpoint
+	mux.HandleFunc("GET /admin/audit", auth(func(w http.ResponseWriter, r *http.Request) {
+		if g.auditLog != nil {
+			writeJSON(w, http.StatusOK, g.auditLog.Events())
+		} else {
+			writeJSON(w, http.StatusOK, []any{})
+		}
+	}))
+
+	// Tool pins endpoint
+	mux.HandleFunc("GET /admin/pins", auth(func(w http.ResponseWriter, r *http.Request) {
+		pinsMap := map[string]string{}
+		if lister, ok := g.pins.(interface{ List() map[string]string }); ok {
+			pinsMap = lister.List()
+		}
+		writeJSON(w, http.StatusOK, pinsMap)
+	}))
+
 	// Signed 1-click decision endpoint for Slack/webhooks
 	mux.HandleFunc("GET /admin/approvals/{id}/decide", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")

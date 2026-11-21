@@ -11,7 +11,9 @@ import (
 func tmp(t *testing.T, s string) string {
 	t.Helper()
 	f, err := os.CreateTemp(t.TempDir(), "*.yaml")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	f.WriteString(s)
 	f.Close()
 	return f.Name()
@@ -27,8 +29,30 @@ backends:
   - name: tools
     url: http://localhost:9000
 `))
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
-	if cfg.Listen != ":8080" { t.Errorf("default listen not applied, got %q", cfg.Listen) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Listen != ":8080" {
+		t.Errorf("default listen not applied, got %q", cfg.Listen)
+	}
+}
+
+func TestLoadJWKSValid(t *testing.T) {
+	cfg, err := config.Load(tmp(t, `
+auth:
+  jwks_url: "https://id.local/.well-known/jwks.json"
+  issuer: "https://id.local"
+  audience: "mcpguard"
+backends:
+  - name: tools
+    url: http://localhost:9000
+`))
+	if err != nil {
+		t.Fatalf("unexpected error with jwks_url: %v", err)
+	}
+	if cfg.Auth.JWKSURL != "https://id.local/.well-known/jwks.json" {
+		t.Errorf("expected jwks_url set, got %q", cfg.Auth.JWKSURL)
+	}
 }
 
 func TestShortSecret(t *testing.T) {
@@ -69,7 +93,9 @@ backends:
   - name: b
     url: http://localhost:9000
 `))
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if cfg.Auth.HS256Secret != "this-is-a-long-enough-secret-32b" {
 		t.Fatalf("env expansion failed: %q", cfg.Auth.HS256Secret)
 	}

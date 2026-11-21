@@ -1,12 +1,13 @@
 // Package netutil provides IP/hostname normalization to defeat SSRF bypasses.
 //
 // Non-canonical private-IP encodings caught:
-//   decimal    2130706433       → 127.0.0.1
-//   hex        0x7f000001       → 127.0.0.1
-//   octal      0177.0.0.1       → 127.0.0.1
-//   short      127.1            → 127.0.0.1
-//   trailing   127.0.0.1.       → 127.0.0.1
-//   IPv6-map   ::ffff:127.0.0.1 → 127.0.0.1
+//
+//	decimal    2130706433       → 127.0.0.1
+//	hex        0x7f000001       → 127.0.0.1
+//	octal      0177.0.0.1       → 127.0.0.1
+//	short      127.1            → 127.0.0.1
+//	trailing   127.0.0.1.       → 127.0.0.1
+//	IPv6-map   ::ffff:127.0.0.1 → 127.0.0.1
 package netutil
 
 import (
@@ -64,24 +65,32 @@ func normalizeIPv4(s string) (string, bool) {
 	switch len(parts) {
 	case 1:
 		n, e := parseOctet(parts[0], 32)
-		if e != nil { return "", false }
+		if e != nil {
+			return "", false
+		}
 		return fmt.Sprintf("%d.%d.%d.%d", (n>>24)&0xff, (n>>16)&0xff, (n>>8)&0xff, n&0xff), true
 	case 2:
 		a, e1 := parseOctet(parts[0], 8)
 		b, e2 := parseOctet(parts[1], 24)
-		if e1 != nil || e2 != nil { return "", false }
+		if e1 != nil || e2 != nil {
+			return "", false
+		}
 		return fmt.Sprintf("%d.%d.%d.%d", a, (b>>16)&0xff, (b>>8)&0xff, b&0xff), true
 	case 3:
 		a, e1 := parseOctet(parts[0], 8)
 		b, e2 := parseOctet(parts[1], 8)
 		c, e3 := parseOctet(parts[2], 16)
-		if e1 != nil || e2 != nil || e3 != nil { return "", false }
+		if e1 != nil || e2 != nil || e3 != nil {
+			return "", false
+		}
 		return fmt.Sprintf("%d.%d.%d.%d", a, b, (c>>8)&0xff, c&0xff), true
 	case 4:
 		var o [4]uint64
 		for i, p := range parts {
 			v, e := parseOctet(p, 8)
-			if e != nil { return "", false }
+			if e != nil {
+				return "", false
+			}
 			o[i] = v
 		}
 		return fmt.Sprintf("%d.%d.%d.%d", o[0], o[1], o[2], o[3]), true
@@ -90,8 +99,11 @@ func normalizeIPv4(s string) (string, bool) {
 }
 
 func parseOctet(s string, bits int) (uint64, error) {
-	if s == "" { return 0, fmt.Errorf("empty octet") }
-	var v uint64; var err error
+	if s == "" {
+		return 0, fmt.Errorf("empty octet")
+	}
+	var v uint64
+	var err error
 	switch {
 	case strings.HasPrefix(strings.ToLower(s), "0x"):
 		v, err = strconv.ParseUint(s[2:], 16, 64)
@@ -100,7 +112,9 @@ func parseOctet(s string, bits int) (uint64, error) {
 	default:
 		v, err = strconv.ParseUint(s, 10, 64)
 	}
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	if bits < 64 && v >= (uint64(1)<<uint(bits)) {
 		return 0, fmt.Errorf("value %d exceeds %d bits", v, bits)
 	}

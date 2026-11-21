@@ -47,7 +47,9 @@ func TestConcurrentSafe(t *testing.T) {
 			done <- struct{}{}
 		}()
 	}
-	for i := 0; i < 50; i++ { <-done }
+	for i := 0; i < 50; i++ {
+		<-done
+	}
 	if n := len(strings.Split(strings.TrimSpace(buf.String()), "\n")); n != 50 {
 		t.Fatalf("want 50 lines, got %d", n)
 	}

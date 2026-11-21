@@ -1,22 +1,105 @@
-# MCPGuard – one-command local demo
-# Usage: docker compose up
+# MCPGuard Production & Evaluation Stack
+# Usage: docker compose up -d
 version: "3.9"
+
 services:
   mcpguard:
-    build: { context: ./shield, dockerfile: Dockerfile }
-    ports: ["8080:8080", "8081:8081"]
+    build:
+      context: ./shield
+      dockerfile: Dockerfile
+    image: mcpguard/shield:latest
+    container_name: mcpguard-shield
+    ports:
+      - "8080:8080" # Streamable MCP Gateway
+      - "8081:8081" # Admin, Healthz, Metrics
     environment:
-      MCPGUARD_HS256_SECRET: "dev-secret-change-me-dev-secret-change-me"
-      MCPGUARD_ADMIN_TOKEN: "dev-admin-token-change-me-16chars"
-    volumes: ["./shield/configs:/configs:ro"]
+      MCPGUARD_HS256_SECRET: "${MCPGUARD_HS256_SECRET:-dev-secret-change-me-dev-secret-change-me-32b}"
+      MCPGUARD_ADMIN_TOKEN: "${MCPGUARD_ADMIN_TOKEN:-dev-admin-token-change-me-16chars}"
+      REDIS_ADDR: "redis:6379"
+      DATABASE_URL: "postgres://mcpguard:mcpguard_secret@postgres:5432/mcpguard?sslmode=disable"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4318"
+    volumes:
+      - ./shield/configs:/configs:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "/mcpguard", "-version"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
-  prometheus:
-    image: prom/prometheus:latest
-    ports: ["9090:9090"]
-    volumes: ["./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    networks:
+      - mcpguard-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: mcpguard-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
+    networks:
+      - mcpguard-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcpguard-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mcpguard
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-mcpguard_secret}"
+      POSTGRES_DB: mcpguard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcpguard -d mcpguard"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - mcpguard-net
+
   jaeger:
     image: jaegertracing/all-in-one:latest
-    ports: ["16686:16686", "4318:4318"]
-    environment: { COLLECTOR_OTLP_ENABLED: "true" }
+    container_name: mcpguard-jaeger
+    ports:
+      - "16686:16686" # Jaeger Web UI
+      - "4318:4318"   # OTLP HTTP receiver
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
     restart: unless-stopped
+    networks:
+      - mcpguard-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcpguard-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+    networks:
+      - mcpguard-net
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  mcpguard-net:
+    driver: bridge

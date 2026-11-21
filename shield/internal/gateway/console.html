@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCPGuard Sentinel Console</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --card-border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --text-bright: #f0f6fc;
+      --accent: #58a6ff;
+      --accent-hover: #1f6feb;
+      --success: #238636;
+      --success-hover: #2ea043;
+      --danger: #da3633;
+      --danger-hover: #f85149;
+      --warning: #d29922;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      padding: 0 1rem 2rem 1rem;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+    }
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, #1f6feb, #238636);
+      color: #fff;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+    }
+    h1 { font-size: 1.25rem; color: var(--text-bright); font-weight: 600; }
+    .auth-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    input[type="password"], input[type="text"] {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-bright);
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    button {
+      cursor: pointer;
+      font-weight: 500;
+      border-radius: 6px;
+      border: none;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.875rem;
+      transition: background 0.15s ease;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: var(--success-hover); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: var(--danger-hover); }
+
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 1.5rem;
+    }
+    .tab-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0.6rem 1rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tab-btn.active {
+      color: var(--text-bright);
+      border-bottom: 2px solid var(--accent);
+      font-weight: 600;
+    }
+    .count-badge {
+      background: var(--card-border);
+      color: var(--text-bright);
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+      font-size: 0.75rem;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-allow { background: rgba(35, 134, 54, 0.2); color: #3fb950; border: 1px solid #238636; }
+    .badge-deny { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid #da3633; }
+    .badge-pending { background: rgba(210, 153, 34, 0.2); color: #e3b341; border: 1px solid #d29922; }
+    .badge-flag { background: rgba(219, 109, 40, 0.2); color: #f0883e; border: 1px solid #bd561d; }
+
+    pre {
+      background: #090d13;
+      border: 1px solid var(--card-border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #e6edf3;
+      margin: 0.5rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      background: #11161d;
+    }
+    tr:hover { background: rgba(255, 255, 255, 0.02); }
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--card-bg);
+      border: 1px solid var(--accent);
+      color: var(--text-bright);
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-group">
+      <div class="logo-badge">MCPGUARD</div>
+      <h1>Sentinel Console</h1>
+    </div>
+    <div class="auth-bar">
+      <input type="password" id="adminTokenInput" placeholder="Admin Bearer Token">
+      <button class="btn-primary" onclick="saveToken()">Save Key</button>
+    </div>
+  </header>
+
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('approvals')">
+      Approvals Inbox <span id="approvalCountBadge" class="count-badge">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('audit')">
+      Live Audit Trail
+    </button>
+    <button class="tab-btn" onclick="switchTab('killswitch')">
+      Session Kill Switch
+    </button>
+    <button class="tab-btn" onclick="switchTab('pins')">
+      Tool Pins & Drift
+    </button>
+  </nav>
+
+  <!-- TAB 1: APPROVALS INBOX -->
+  <main id="tab-approvals" class="tab-content active">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h2 style="font-size:1.1rem; color:var(--text-bright);">Pending Human Approvals</h2>
+      <button class="btn-primary" onclick="loadApprovals()">Refresh</button>
+    </div>
+    <div id="approvalsList">
+      <p style="color:var(--text-muted);">Loading pending approvals...</p>
+    </div>
+  </main>
+
+  <!-- TAB 2: AUDIT TRAIL -->
+  <main id="tab-audit" class="tab-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; gap:1rem;">
+      <h2 style="font-size:1.1rem; color:var(--text-bright);">Recent Policy Decisions (sentinel.step)</h2>
+      <div style="display:flex; gap:0.5rem;">
+        <input type="text" id="auditFilter" placeholder="Filter by Agent, Tool, or Decision" onkeyup="filterAudit()">
+        <button class="btn-primary" onclick="loadAudit()">Refresh</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Decision</th>
+            <th>Tool</th>
+            <th>Agent ID</th>
+            <th>Session</th>
+            <th>Rule</th>
+            <th>Findings</th>
+          </tr>
+        </thead>
+        <tbody id="auditTableBody">
+          <tr><td colspan="7" style="color:var(--text-muted); text-align:center;">Loading audit events...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- TAB 3: KILL SWITCH -->
+  <main id="tab-killswitch" class="tab-content">
+    <div class="card" style="max-width: 600px;">
+      <h2 style="font-size:1.1rem; color:var(--text-bright); margin-bottom:0.5rem;">Instant Session Revocation</h2>
+      <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">
+        Pushes an immediate kill-switch event to Redis Pub/Sub and in-memory fast path. The agent's next tool call will be rejected with HTTP 401 Unauthorized (Security Invariant #11).
+      </p>
+      <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+        <input type="text" id="revokeSessionInput" placeholder="Session ID (e.g. sess_12345)" style="flex:1;">
+        <button class="btn-danger" onclick="revokeSession()">Revoke Session</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- TAB 4: PINS & DRIFT -->
+  <main id="tab-pins" class="tab-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h2 style="font-size:1.1rem; color:var(--text-bright);">Approved Tool Hashes & Quarantine Status</h2>
+      <button class="btn-primary" onclick="loadPins()">Refresh</button>
+    </div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <thead>
+          <tr>
+            <th>Tool / Target Key</th>
+            <th>Approved Hash (SHA-256)</th>
+            <th>Integrity Status</th>
+          </tr>
+        </thead>
+        <tbody id="pinsTableBody">
+          <tr><td colspan="3" style="color:var(--text-muted); text-align:center;">Loading pinned tools...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let token = sessionStorage.getItem("mcpguard_admin_token") || "";
+    if (token) {
+      document.getElementById("adminTokenInput").value = token;
+    }
+
+    function saveToken() {
+      token = document.getElementById("adminTokenInput").value.trim();
+      sessionStorage.setItem("mcpguard_admin_token", token);
+      showToast("Admin token saved");
+      loadApprovals();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.innerText = msg;
+      t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 3000);
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+      event.currentTarget.classList.add("active");
+      document.getElementById("tab-" + name).classList.add("active");
+
+      if (name === "approvals") loadApprovals();
+      if (name === "audit") loadAudit();
+      if (name === "pins") loadPins();
+    }
+
+    async function apiFetch(url, options = {}) {
+      options.headers = options.headers || {};
+      if (token) {
+        options.headers["Authorization"] = "Bearer " + token;
+      }
+      return fetch(url, options);
+    }
+
+    async function loadApprovals() {
+      const container = document.getElementById("approvalsList");
+      try {
+        const res = await apiFetch("/admin/approvals");
+        if (res.status === 401) {
+          container.innerHTML = '<p style="color:var(--danger);">Unauthorized. Enter valid Admin Bearer Token above.</p>';
+          return;
+        }
+        const data = await res.json();
+        document.getElementById("approvalCountBadge").innerText = data ? data.length : 0;
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p style="color:var(--text-muted);">No pending approvals. All agent operations are currently clear.</p>';
+          return;
+        }
+        let html = "";
+        data.forEach(appr => {
+          html += `
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">
+                  <span class="badge badge-pending">PENDING APPROVAL</span>
+                  <code>${escapeHtml(appr.tool)}</code>
+                </span>
+                <span style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(appr.created_at || '')}</span>
+              </div>
+              <div style="font-size:0.875rem; margin-bottom:0.5rem;">
+                <strong>Agent:</strong> <code>${escapeHtml(appr.agent_id)}</code> &nbsp;|&nbsp;
+                <strong>Caller:</strong> <code>${escapeHtml(appr.subject)}</code> &nbsp;|&nbsp;
+                <strong>Session:</strong> <code>${escapeHtml(appr.session_id)}</code>
+              </div>
+              <div style="font-size:0.8rem; color:var(--text-muted);">Exact Call Arguments:</div>
+              <pre>${escapeHtml(JSON.stringify(appr.arguments, null, 2))}</pre>
+              <div style="margin-top:0.75rem; display:flex; gap:0.5rem;">
+                <button class="btn-success" onclick="decide('${appr.id}', true)">Approve Call</button>
+                <button class="btn-danger" onclick="decide('${appr.id}', false)">Deny Call</button>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = '<p style="color:var(--danger);">Error loading approvals: ' + escapeHtml(err.message) + '</p>';
+      }
+    }
+
+    async function decide(id, approve) {
+      const action = approve ? "approve" : "deny";
+      try {
+        const res = await apiFetch('/admin/approvals/' + id + '/' + action, { method: "POST" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        showToast("Approval " + id + " was " + (approve ? "approved" : "denied"));
+        loadApprovals();
+      } catch (err) {
+        showToast("Decision failed: " + err.message);
+      }
+    }
+
+    async function revokeSession() {
+      const sid = document.getElementById("revokeSessionInput").value.trim();
+      if (!sid) return;
+      try {
+        const res = await apiFetch('/admin/revoke', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sid })
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        showToast("Session " + sid + " successfully revoked!");
+        document.getElementById("revokeSessionInput").value = "";
+      } catch (err) {
+        showToast("Revoke failed: " + err.message);
+      }
+    }
+
+    let allAuditEvents = [];
+    async function loadAudit() {
+      const tbody = document.getElementById("auditTableBody");
+      try {
+        const res = await apiFetch("/admin/audit");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        allAuditEvents = await res.json();
+        renderAudit(allAuditEvents);
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger); text-align:center;">Failed to load audit events: ' + escapeHtml(err.message) + '</td></tr>';
+      }
+    }
+
+    function renderAudit(events) {
+      const tbody = document.getElementById("auditTableBody");
+      if (!events || events.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted); text-align:center;">No recent audit events recorded.</td></tr>';
+        return;
+      }
+      let html = "";
+      // Display newest first
+      for (let i = events.length - 1; i >= 0; i--) {
+        const e = events[i];
+        const decClass = "badge-" + (e.Decision || "allow");
+        const findings = e.Findings && e.Findings.length ? e.Findings.join(", ") : "-";
+        html += `
+          <tr>
+            <td style="font-family:var(--font-mono); font-size:0.8rem; color:var(--text-muted);">${e.Time ? new Date(e.Time).toLocaleTimeString() : '-'}</td>
+            <td><span class="badge ${decClass}">${escapeHtml(e.Decision || '')}</span></td>
+            <td><code>${escapeHtml(e.Tool || e.Kind || '-')}</code></td>
+            <td><code>${escapeHtml(e.AgentID || '-')}</code></td>
+            <td><code>${escapeHtml(e.SessionID || '-')}</code></td>
+            <td style="color:var(--text-muted);">${escapeHtml(e.Rule || '')}</td>
+            <td style="font-size:0.8rem; color:${findings !== '-' ? 'var(--warning)' : 'var(--text-muted)'};">${escapeHtml(findings)}</td>
+          </tr>
+        `;
+      }
+      tbody.innerHTML = html;
+    }
+
+    function filterAudit() {
+      const q = document.getElementById("auditFilter").value.toLowerCase();
+      const filtered = allAuditEvents.filter(e => {
+        return (e.AgentID && e.AgentID.toLowerCase().includes(q)) ||
+               (e.Tool && e.Tool.toLowerCase().includes(q)) ||
+               (e.Decision && e.Decision.toLowerCase().includes(q)) ||
+               (e.Rule && e.Rule.toLowerCase().includes(q));
+      });
+      renderAudit(filtered);
+    }
+
+    async function loadPins() {
+      const tbody = document.getElementById("pinsTableBody");
+      try {
+        const res = await apiFetch("/admin/pins");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const pins = await res.json();
+        const keys = Object.keys(pins || {});
+        if (keys.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted); text-align:center;">No tool definitions pinned yet.</td></tr>';
+          return;
+        }
+        let html = "";
+        keys.forEach(k => {
+          html += `
+            <tr>
+              <td><code>${escapeHtml(k)}</code></td>
+              <td><code style="font-size:0.8rem;">${escapeHtml(pins[k])}</code></td>
+              <td><span class="badge badge-allow">VERIFIED & PINNED</span></td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = html;
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--danger); text-align:center;">Failed to load pins: ' + escapeHtml(err.message) + '</td></tr>';
+      }
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Auto-refresh approvals every 4 seconds when tab is active
+    setInterval(() => {
+      if (document.getElementById("tab-approvals").classList.contains("active")) {
+        loadApprovals();
+      }
+    }, 4000);
+
+    // Initial load
+    loadApprovals();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mcpguard.fullname" . }}
+  labels:
+    {{- include "mcpguard.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.mcpPort }}
+      targetPort: mcp
+      protocol: TCP
+      name: mcp
+    - port: {{ .Values.service.adminPort }}
+      targetPort: admin
+      protocol: TCP
+      name: admin
+  selector:
+    {{- include "mcpguard.selectorLabels" . | nindent 4 }}
+

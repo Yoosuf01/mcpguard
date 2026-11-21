@@ -44,7 +44,9 @@ func (c *Checker) ReadinessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c.mu.RLock()
 		checks := make(map[string]CheckFn, len(c.checks))
-		for k, v := range c.checks { checks[k] = v }
+		for k, v := range c.checks {
+			checks[k] = v
+		}
 		c.mu.RUnlock()
 
 		results := make(map[string]string, len(checks))

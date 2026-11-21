@@ -4,7 +4,8 @@ package version
 import "fmt"
 
 // Set at build time:
-//   go build -ldflags "-X .../version.Version=v1.0.0 -X .../version.Commit=abc1234 ..."
+//
+//	go build -ldflags "-X .../version.Version=v1.0.0 -X .../version.Commit=abc1234 ..."
 var (
 	Version   = "dev"
 	Commit    = "none"

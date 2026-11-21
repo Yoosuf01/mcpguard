@@ -25,6 +25,7 @@ import (
 	"github.com/Yoosuf01/mcpguard/shield/internal/identity"
 	"github.com/Yoosuf01/mcpguard/shield/internal/policy"
 	"github.com/Yoosuf01/mcpguard/shield/internal/telemetry"
+	"github.com/Yoosuf01/mcpguard/shield/internal/version"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,9 +41,13 @@ type Config struct {
 }
 
 type AuthConfig struct {
-	Secret   string `yaml:"hs256_secret"`
-	Issuer   string `yaml:"issuer"`
-	Audience string `yaml:"audience"`
+	Secret          string   `yaml:"hs256_secret"`
+	JWKSURL         string   `yaml:"jwks_url"`
+	Issuer          string   `yaml:"issuer"`
+	Audience        string   `yaml:"audience"`
+	ResourceURL     string   `yaml:"resource_url"`
+	AuthServers     []string `yaml:"authorization_servers"`
+	ScopesSupported []string `yaml:"scopes_supported"`
 }
 
 func main() {
@@ -62,7 +67,13 @@ func main() {
 	scope := flag.String("scope", "db:read", "space-separated scopes for -mint")
 	sid := flag.String("sid", "", "session id for -mint (random if empty)")
 	ttl := flag.Duration("ttl", 10*time.Minute, "token lifetime for -mint")
+	showVersion := flag.Bool("version", false, "print version information and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version.Info())
+		return
+	}
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	resolvedConfig := *cfgPath
@@ -108,15 +119,55 @@ func main() {
 	approvals := hitl.NewStore(15 * time.Minute)
 	engine := policy.NewEngine(pol, approvals)
 	revocations := identity.NewMemoryRevocations()
-	verifier := &identity.HS256Verifier{Secret: []byte(cfg.Auth.Secret), Issuer: cfg.Auth.Issuer,
-		Audience: cfg.Auth.Audience, Revocations: revocations, Leeway: 30 * time.Second}
+	var verifier identity.Verifier
+	if cfg.Auth.JWKSURL != "" {
+		verifier = identity.NewJWKSVerifier(identity.JWKSVerifierOptions{
+			JWKSURL:     cfg.Auth.JWKSURL,
+			Issuer:      cfg.Auth.Issuer,
+			Audience:    cfg.Auth.Audience,
+			Revocations: revocations,
+			Leeway:      30 * time.Second,
+		})
+	} else {
+		verifier = &identity.HS256Verifier{
+			Secret:      []byte(cfg.Auth.Secret),
+			Issuer:      cfg.Auth.Issuer,
+			Audience:    cfg.Auth.Audience,
+			Revocations: revocations,
+			Leeway:      30 * time.Second,
+		}
+	}
 	rec := telemetry.SlogRecorder{L: log}
 
-	gw := gateway.New(gateway.Options{Backends: cfg.Backends, StrictHeaders: cfg.Strict, ToolSeparator: cfg.Separator},
-		engine, verifier, rec, guard.NewMemoryPins())
+	var meta *gateway.ProtectedResourceMetadata
+	if cfg.Auth.ResourceURL != "" || len(cfg.Auth.AuthServers) > 0 || cfg.Auth.Issuer != "" {
+		resURL := cfg.Auth.ResourceURL
+		if resURL == "" {
+			resURL = "http://" + cfg.Listen + "/mcp"
+		}
+		authServers := cfg.Auth.AuthServers
+		if len(authServers) == 0 && cfg.Auth.Issuer != "" {
+			authServers = []string{cfg.Auth.Issuer}
+		}
+		meta = &gateway.ProtectedResourceMetadata{
+			Resource:                          resURL,
+			AuthorizationServers:              authServers,
+			ScopesSupported:                   cfg.Auth.ScopesSupported,
+			BearerMethodsSupported:            []string{"header"},
+			ResourceSigningAlgValuesSupported: []string{"ES256"},
+		}
+	}
+
+	gw := gateway.New(gateway.Options{
+		Backends:         cfg.Backends,
+		StrictHeaders:    cfg.Strict,
+		ToolSeparator:    cfg.Separator,
+		ResourceMetadata: meta,
+	}, engine, verifier, rec, guard.NewMemoryPins())
 
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", gw)
+	mux.Handle("GET /.well-known/oauth-protected-resource", gw.ProtectedResourceMetadataHandler())
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
 	srv := &http.Server{Addr: cfg.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	admin := &http.Server{Addr: cfg.AdminListen, Handler: gw.AdminHandler(cfg.AdminToken, revocations), ReadHeaderTimeout: 10 * time.Second}
@@ -173,7 +224,7 @@ func loadConfig(p string) (*Config, error) {
 	if c.AdminListen == "" {
 		c.AdminListen = "127.0.0.1:8081"
 	}
-	if len(c.Auth.Secret) < 32 {
+	if c.Auth.JWKSURL == "" && len(c.Auth.Secret) < 32 {
 		return nil, errors.New("auth.hs256_secret must be at least 32 bytes")
 	}
 	if len(c.Backends) == 0 {

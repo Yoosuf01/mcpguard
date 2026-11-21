@@ -53,6 +53,15 @@ func (p *MemoryPins) Get(k string) (string, bool) {
 	return v, ok
 }
 func (p *MemoryPins) Set(k, v string) { p.mu.Lock(); p.m[k] = v; p.mu.Unlock() }
+func (p *MemoryPins) List() map[string]string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	res := make(map[string]string, len(p.m))
+	for k, v := range p.m {
+		res[k] = v
+	}
+	return res
+}
 
 type DiscoveryConfig struct {
 	Mode               InstructionsMode

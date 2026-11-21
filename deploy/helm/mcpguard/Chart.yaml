@@ -1,0 +1,19 @@
+apiVersion: v2
+name: mcpguard
+description: Enterprise Zero-Trust Security Gateway for Model Context Protocol (MCP) Agents
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - mcp
+  - security
+  - gateway
+  - agentic-ai
+  - zero-trust
+home: https://github.com/Yoosuf01/mcpguard
+sources:
+  - https://github.com/Yoosuf01/mcpguard
+maintainers:
+  - name: MCPGuard Maintainers
+    url: https://github.com/Yoosuf01/mcpguard
+

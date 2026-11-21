@@ -1,0 +1,207 @@
+# Default values for mcpguard.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 2
+
+image:
+  repository: mcpguard/shield
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account (e.g. for AWS IRSA / GCP Workload Identity)
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # Zero-Trust: do not automount k8s API tokens into the proxy container
+  automountServiceAccountToken: false
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8081"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  mcpPort: 8080
+  adminPort: 8081
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: mcpguard.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: mcpguard-tls
+  #    hosts:
+  #      - mcpguard.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  # Ingress rules
+  allowPrometheusScraping: true
+  prometheusNamespace: "monitoring"
+  # Egress rules
+  egress:
+    allowDns: true
+    allowRedis: true
+    allowPostgres: true
+    allowExternalHttp: true
+    blockMetadata: true # Blocks 169.254.169.254
+
+serviceMonitor:
+  enabled: false
+  namespace: ""
+  interval: 15s
+  scrapeTimeout: 10s
+  labels: {}
+
+# Probes configuration
+probes:
+  liveness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 2
+  startup:
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 10
+
+# Extra environment variables to inject into mcpguard
+extraEnv: []
+  # - name: REDIS_URL
+  #   value: "redis://mcpguard-redis:6379"
+
+# Secrets management
+secrets:
+  # If specified, mcpguard uses this existing Kubernetes Secret instead of creating one
+  existingSecret: ""
+  # Shield Admin Bearer Token for HITL approvals and admin management
+  adminToken: "change-me-in-production-mcpguard-admin-token"
+  # Secret key for HS256 JWT validation / token minting
+  jwtHs256Secret: "change-me-in-production-super-secret-key-32-chars-min"
+  # Optional Redis auth password
+  redisPassword: ""
+  # Optional Postgres auth password
+  postgresPassword: ""
+
+# Embedded configuration files mounted to /etc/shield
+config:
+  shieldYaml: |
+    server:
+      listen: ":8080"
+      admin_listen: ":8081"
+      read_timeout_sec: 15
+      write_timeout_sec: 30
+      idle_timeout_sec: 60
+    auth:
+      mode: "jwt"
+      jwks_url: ""
+    state:
+      driver: "memory"
+    telemetry:
+      service_name: "mcpguard"
+    policy_path: "/etc/shield/policy.yaml"
+
+  policyYaml: |
+    version: "1"
+    default_action: deny
+    max_steps_per_session: 50
+    rate_limit:
+      requests_per_minute: 120
+      burst: 30
+    discovery:
+      cache_scope: "private"
+      ttl_seconds: 300
+    redaction:
+      enabled: true
+      types: ["credit_card", "ssn", "api_key"]
+    egress:
+      default_action: deny
+      allow_domains: []
+      block_private_ips: true
+    rules:
+      - name: allow_safe_discovery
+        match:
+          method: "tools/list"
+        action: allow
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - mcpguard
+          topologyKey: kubernetes.io/hostname
+

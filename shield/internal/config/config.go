@@ -29,10 +29,14 @@ type Gateway struct {
 
 // Auth holds JWT verification parameters.
 type Auth struct {
-	HS256Secret string        `yaml:"hs256_secret"`
-	Issuer      string        `yaml:"issuer"`
-	Audience    string        `yaml:"audience"`
-	Leeway      time.Duration `yaml:"leeway"`
+	HS256Secret     string        `yaml:"hs256_secret"`
+	JWKSURL         string        `yaml:"jwks_url"`
+	Issuer          string        `yaml:"issuer"`
+	Audience        string        `yaml:"audience"`
+	Leeway          time.Duration `yaml:"leeway"`
+	ResourceURL     string        `yaml:"resource_url"`
+	AuthServers     []string      `yaml:"authorization_servers"`
+	ScopesSupported []string      `yaml:"scopes_supported"`
 }
 
 // Backend is a single upstream MCP server.
@@ -75,7 +79,7 @@ func Load(path string) (*Gateway, error) {
 
 func (g *Gateway) validate() error {
 	var errs []string
-	if len(g.Auth.HS256Secret) < 32 {
+	if g.Auth.JWKSURL == "" && len(g.Auth.HS256Secret) < 32 {
 		errs = append(errs, "auth.hs256_secret must be at least 32 bytes")
 	}
 	if g.Auth.Issuer == "" {
@@ -102,14 +106,30 @@ func (g *Gateway) validate() error {
 }
 
 func (g *Gateway) applyDefaults() {
-	if g.Listen == ""          { g.Listen = ":8080" }
-	if g.AdminListen == ""     { g.AdminListen = "127.0.0.1:8081" }
-	if g.Separator == ""       { g.Separator = "/" }
-	if g.Auth.Leeway == 0      { g.Auth.Leeway = 30 * time.Second }
-	if g.HITL.ApprovalTTL == 0 { g.HITL.ApprovalTTL = 15 * time.Minute }
-	if g.HITL.WebhookTimeout == 0 { g.HITL.WebhookTimeout = 5 * time.Second }
-	if g.Logging.Format == ""  { g.Logging.Format = "json" }
-	if g.Logging.Level == ""   { g.Logging.Level = "info" }
+	if g.Listen == "" {
+		g.Listen = ":8080"
+	}
+	if g.AdminListen == "" {
+		g.AdminListen = "127.0.0.1:8081"
+	}
+	if g.Separator == "" {
+		g.Separator = "/"
+	}
+	if g.Auth.Leeway == 0 {
+		g.Auth.Leeway = 30 * time.Second
+	}
+	if g.HITL.ApprovalTTL == 0 {
+		g.HITL.ApprovalTTL = 15 * time.Minute
+	}
+	if g.HITL.WebhookTimeout == 0 {
+		g.HITL.WebhookTimeout = 5 * time.Second
+	}
+	if g.Logging.Format == "" {
+		g.Logging.Format = "json"
+	}
+	if g.Logging.Level == "" {
+		g.Logging.Level = "info"
+	}
 	for i := range g.Backends {
 		if g.Backends[i].Timeout == 0 {
 			g.Backends[i].Timeout = 30 * time.Second

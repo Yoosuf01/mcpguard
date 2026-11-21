@@ -43,6 +43,34 @@ backends:
 	}
 }
 
+func TestLoadConfig_JWKSValid(t *testing.T) {
+	yamlContent := `
+listen: ":9090"
+admin_listen: ":9091"
+admin_token: "test-admin"
+policy_file: "policy.yaml"
+auth:
+  jwks_url: "https://id.local/.well-known/jwks.json"
+  issuer: "test-iss"
+  audience: "test-aud"
+backends:
+  - name: "test-b"
+    url: "http://localhost:8000"
+`
+	tmp := filepath.Join(t.TempDir(), "shield-jwks.yaml")
+	if err := os.WriteFile(tmp, []byte(yamlContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := loadConfig(tmp)
+	if err != nil {
+		t.Fatalf("loadConfig with jwks_url failed: %v", err)
+	}
+	if cfg.Auth.JWKSURL != "https://id.local/.well-known/jwks.json" {
+		t.Errorf("expected jwks_url, got %s", cfg.Auth.JWKSURL)
+	}
+}
+
 func TestLoadConfig_ValidationFailures(t *testing.T) {
 	// Secret too short
 	shortSecretYAML := `

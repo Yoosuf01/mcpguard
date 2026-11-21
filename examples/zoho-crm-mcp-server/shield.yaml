@@ -1,0 +1,17 @@
+listen: "127.0.0.1:8080"
+admin_listen: "127.0.0.1:8081"
+admin_token: "demo-admin-token-secret"
+policy_file: "examples/zoho-crm-mcp-server/policy.yaml"
+strict_headers: false
+tool_separator: "__"
+
+auth:
+  hs256_secret: "demo-hs256-secret-must-be-at-least-32-chars-long"
+  issuer: "https://identity.mcpguard.local"
+  audience: "mcpguard-shield"
+
+backends:
+  - name: zoho
+    url: "http://127.0.0.1:9003"
+    timeout: 30s
+

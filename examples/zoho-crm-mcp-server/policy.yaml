@@ -1,0 +1,36 @@
+version: "1"
+default_action: deny
+
+global:
+  deny_arg_patterns: []
+  block_secrets_in_arguments: true
+  mask_in_results:
+    - credit_card
+    - ssn
+    - generic_api_key
+  egress:
+    block_private_networks: true
+    allow_domains:
+      - "*.zoho.com"
+      - "*.zohoapis.com"
+  discovery:
+    upstream_instructions: drop
+    pin_tool_definitions: true
+  output_scanning:
+    on_injection: flag
+
+agents:
+  - id: zoho-crm-sales-bot
+    max_steps_per_session: 25
+    rate_limit_per_minute: 60
+    tools:
+      - name: zoho__search_records
+        require_scope: "crm:read"
+      - name: zoho__get_contact
+        require_scope: "crm:read"
+      - name: zoho__update_contact
+        require_scope: "crm:write"
+        require_approval: true
+      - name: zoho__delete_contact
+        deny: true
+
