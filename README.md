@@ -130,19 +130,30 @@ Measured on Apple M4 using `go test -bench=. -benchmem`:
 | Distributed traces (OTel) | Jaeger `http://localhost:16686` |
 | Audit log | stdout (JSON lines, one record per decision) |
 
-## Roadmap
+## Comparison: MCPGuard vs. Other Platforms
 
-- [x] OpenTelemetry distributed tracing & W3C traceparent propagation
-- [x] `dry_run: true` monitor/audit mode
-- [x] Pluggable distributed state (in-memory with TTL eviction + Redis multi-replica adapters)
-- [x] Proxying `resources/*` (egress checking) and `prompts/*` (injection scanning)
-- [x] Local `stdio` process supervision with environment variable allowlisting
-- [x] Persistent tool pinning registry with CLI diff & re-approval (`mcpguard pins`)
-- [x] Webhook notifications for HITL approvals with HMAC-signed 1-click decision URLs
-- [ ] JWKS / OIDC dynamic token verification (Phase 2)
-- [ ] Embedded OPA/Rego policy backend (Phase 1b)
-- [ ] Firecracker microVM isolated sandboxed tool execution (Phase 3)
-- [ ] Web Admin dashboard UI & Console (Phase 4)
+| Capability | **MCPGuard (Sentinel)** | **WSO2 Agent Manager** | **Archestra** | **Lasso Security** | **Runlayer** |
+|---|---|---|---|---|---|
+| **License** | **Apache 2.0** | Apache 2.0 | AGPL-3.0 | MIT | Commercial / Closed |
+| **Form Factor** | **Single Go Binary (< 35 MB)** | K8s / OpenChoreo Platform | K8s-native Pods | Python Gateway | Hosted SaaS / Enterprise |
+| **5-Minute Start** | **Yes** (Drop-in before agent) | No (Heavy platform setup) | No (Requires K8s cluster) | Yes | No (SaaS sign-up) |
+| **Step-Level Policy Engine** | **Yes** (Go + Native Rego/OPA) | Yes (40+ Guardrails) | Deterministic Rules | Regex Plugin | Proprietary ToolGuard |
+| **Agent Identity (RFC 8693)** | **Yes** (3-Way Scope Math, ES256) | Yes (Enterprise IdP) | No | No | Yes (IAM) |
+| **Compute Sandbox Isolation** | **Yes** (Docker + Firecracker KVM) | Yes (K8s Sandbox) | K8s Pods Only | No | Yes (Cloud Containers) |
+| **DNS-Pinned Egress Proxy** | **Yes** (Defeats DNS rebinding) | No | No | No | No |
+| **Console Web UI** | **Yes** (Embedded zero-dependency) | Yes (Web Portal) | Yes (Web UI) | No | Yes (Web Dashboard) |
+
+---
+
+## Roadmap & Milestone Progress
+
+- [x] **Phase 0: Baseline Hardening**: Step counting on every call attempt (Invariant #10), strict SSRF host canonicalization, hot policy reload resilience (Invariant #12).
+- [x] **Phase 1: Shield Core MVP**: OpenTelemetry tracing (`sentinel.*` spans), `dry_run: true` audit mode, Redis distributed state, proxying `resources/*` & `prompts/*`, stdio backend child supervision, tool pins CLI (`mcpguard pins`), 1-click webhook approvals, distroless Docker packaging, sub-0.07ms p99 benchmarks.
+- [x] **Phase 1b: Policy-as-Code**: Embedded Open Policy Agent (OPA) Go runtime (`rego`), YAML-to-Rego compiler (`mcpguard policy compile`), and policy test CLI (`mcpguard policy test`).
+- [x] **Phase 2: Sentinel Identity**: RFC 8693 token exchange with 3-way scope intersection math, ES256 `JWKSVerifier` with singleflight deduplication and SSRF-safe fetching, Agent Identity Registry, RFC 9470 OAuth Protected Resource Metadata (`/.well-known/oauth-protected-resource`), and Redis Pub/Sub real-time session revocation kill switch.
+- [x] **Phase 3: Sentinel Sandbox**: Unified escape conformance suite, hardened unprivileged Docker driver (`--network none`, `--read-only`, tmpfs, `--cap-drop ALL`, `no-new-privileges`), Firecracker MicroVM driver over virtio-vsock with <5ms warm pool, and DNS-pinned forward egress proxy defeating TOCTOU DNS rebinding.
+- [x] **Phase 4: Sentinel Fabric**: Production Docker Compose stack (`deploy/docker-compose.yaml`), production Kubernetes Helm Chart (`deploy/helm/mcpguard`) conforming to Restricted Pod Security Standards, real-world scoped Zoho CRM reference integration (`examples/zoho-crm-mcp-server`), and embedded air-gapped Sentinel Console UI (`/admin/console`).
+
 
 ## Contributing & Security
 

@@ -16,4 +16,4 @@ go test -race ./...
 ./examples/exploit-demo/demo.sh
 ```
 
-See `../private-docs/SENTINEL_BRIEF.md` for architecture, threat model, roadmap and the policy reference. License: Apache-2.0.
+See `../docs/BRIEF.md`, `../docs/policy-reference.md`, and `../docs/threat-model.md` for architecture, threat model, roadmap and the policy reference. License: Apache-2.0.
