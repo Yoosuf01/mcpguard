@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go: ["1.23"]
+        go: ["1.26"]
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: "1.23", cache: true }
+        with: { go-version: "1.26", cache: true }
       - uses: golangci/golangci-lint-action@v6
         with: { version: latest, working-directory: shield }
 
@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: "1.23", cache: true }
+        with: { go-version: "1.26", cache: true }
       - name: Build
         run: |
           cd shield && go build \
