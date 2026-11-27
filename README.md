@@ -5,11 +5,16 @@
 **A production-grade security gateway for [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers.**
 
 [![CI](https://github.com/Yoosuf01/mcpguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Yoosuf01/mcpguard/actions)
+[![Release](https://img.shields.io/github/v/release/Yoosuf01/mcpguard?color=238636)](https://github.com/Yoosuf01/mcpguard/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26%2B-00ADD8?logo=go)](https://go.dev)
 
 MCPGuard sits between your AI agents and their MCP tool servers, enforcing
 **fine-grained security policies** before any tool call reaches the backend.
+
+<br />
+
+<img src="docs/assets/exploit-demo.gif" alt="MCPGuard blocking prompt injection, DROP TABLE, SSRF, and session revocation live" width="840" />
 
 </div>
 
@@ -87,10 +92,30 @@ cd shield && ./examples/exploit-demo/demo.sh
 
 Runs 7 real attack vectors against raw upstream servers vs. MCPGuard (prompt injection, `DROP TABLE`, data exfiltration, SSRF to `169.254.169.254`, PII redaction, and instant session revocation).
 
-### Install via Go
+### Install via Go or Prebuilt Release Binary
 
 ```bash
 go install github.com/Yoosuf01/mcpguard/shield/cmd/shield@latest
+```
+
+Or download prebuilt Linux, macOS, and Windows archives from [GitHub Releases](https://github.com/Yoosuf01/mcpguard/releases/latest).
+
+### Connect Cursor / Claude Code
+
+Point your MCP client at the gateway (`examples/cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "mcpguard": {
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCPGUARD_TOKEN}",
+        "MCP-Protocol-Version": "2026-07-28"
+      }
+    }
+  }
+}
 ```
 
 ### Client & Production Integrations
@@ -142,14 +167,19 @@ Measured on Apple M4 using `go test -bench=. -benchmem`:
 
 > MCPGuard adds **less than 0.07 ms of overhead** to an end-to-end tool call while enforcing step limits, rate limits, secret detection, IP canonicalization/SSRF filters, and OpenTelemetry trace propagation.
 
-## Observability
+## Observability & Sentinel Console
 
 | Surface | Where |
 |---|---|
+| Sentinel Console UI | `http://localhost:8081/admin/console` |
 | Structured JSON logs | stdout (`mcpguard.step` events) |
 | Prometheus metrics | `http://localhost:8081/metrics` |
 | Distributed traces (OTel) | Jaeger `http://localhost:16686` |
 | Audit log | stdout (JSON lines, one record per decision) |
+
+<p align="center">
+  <img src="docs/assets/console-preview.png" alt="MCPGuard Sentinel Console UI" width="840" />
+</p>
 
 ## Comparison: MCPGuard vs. Other Platforms
 
