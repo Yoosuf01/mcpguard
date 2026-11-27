@@ -117,7 +117,7 @@ func (g *Gateway) AdminHandler(adminToken string, rev identity.Revocations) http
 			statusText = "DENIED"
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(fmt.Sprintf(`<!DOCTYPE html><html><body style="font-family:sans-serif;padding:2rem;"><h2>MCPGuard Approval Decision</h2><p>Request <strong>%s</strong> for tool <code>%s</code> has been <strong>%s</strong>.</p></body></html>`, req.ID, req.Tool, statusText)))
+		_, _ = fmt.Fprintf(w, `<!DOCTYPE html><html><body style="font-family:sans-serif;padding:2rem;"><h2>MCPGuard Approval Decision</h2><p>Request <strong>%s</strong> for tool <code>%s</code> has been <strong>%s</strong>.</p></body></html>`, req.ID, req.Tool, statusText)
 	})
 
 	return mux

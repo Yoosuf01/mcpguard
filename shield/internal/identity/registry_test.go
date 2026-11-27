@@ -314,11 +314,12 @@ func TestMemoryAgentRegistry_ConcurrentAccess(t *testing.T) {
 		id := "agent-conc"
 		go func(idx int) {
 			defer wg.Done()
-			if idx%3 == 0 {
+			switch idx % 3 {
+			case 0:
 				_ = reg.Register(ctx, &AgentProfile{ID: id, Name: "Initial"})
-			} else if idx%3 == 1 {
+			case 1:
 				_ = reg.UpdateStatus(ctx, id, AgentStatusActive)
-			} else {
+			default:
 				_, _ = reg.Get(ctx, id)
 			}
 		}(i)

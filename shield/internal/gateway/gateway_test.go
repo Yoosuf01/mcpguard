@@ -316,7 +316,7 @@ global:
 	}
 
 	// 3. prompts/get containing credential in arguments -> denied
-	code, out = h.rpc(t, tok, "prompts/get", map[string]any{"name": "docs__greeting", "arguments": map[string]any{
+	_, out = h.rpc(t, tok, "prompts/get", map[string]any{"name": "docs__greeting", "arguments": map[string]any{
 		"token": "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
 	}}, map[string]string{"Mcp-Name": "docs__greeting"})
 	txt, isErr = resultText(out)

@@ -129,15 +129,16 @@ func runPolicyTest(policyPath, fixturesPath string) {
 
 	var regoSrc string
 	ext := strings.ToLower(filepath.Ext(resolvedPolicy))
-	if ext == ".yaml" || ext == ".yml" {
+	switch ext {
+	case ".yaml", ".yml":
 		regoSrc, err = policy.CompileYAMLBytesToRego(b)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "YAML policy compilation error: %v\n", err)
 			os.Exit(1)
 		}
-	} else if ext == ".rego" {
+	case ".rego":
 		regoSrc = string(b)
-	} else {
+	default:
 		fmt.Fprintf(os.Stderr, "unsupported policy file extension %q (want .yaml, .yml or .rego)\n", ext)
 		os.Exit(1)
 	}

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Yoosuf01/mcpguard/shield/internal/identity"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/v1/rego"
 )
 
 // RegoEngine evaluates step decisions using an embedded Open Policy Agent instance.

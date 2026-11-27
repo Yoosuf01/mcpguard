@@ -129,9 +129,9 @@ func (s *FileStore) Approve(server, tool, newDigest string) error {
 
 func Diff(server, tool, oldDigest, newDigest string) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("=== Tool Pin Diff: %s/%s ===\n", server, tool))
-	sb.WriteString(fmt.Sprintf("- Previous Pinned Digest: %s\n", oldDigest))
-	sb.WriteString(fmt.Sprintf("+ Incoming Drift Digest:  %s\n", newDigest))
+	fmt.Fprintf(&sb, "=== Tool Pin Diff: %s/%s ===\n", server, tool)
+	fmt.Fprintf(&sb, "- Previous Pinned Digest: %s\n", oldDigest)
+	fmt.Fprintf(&sb, "+ Incoming Drift Digest:  %s\n", newDigest)
 	if oldDigest == newDigest {
 		sb.WriteString("Status: Matches existing pin (No drift)\n")
 	} else {
