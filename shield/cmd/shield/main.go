@@ -168,7 +168,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", gw)
 	mux.Handle("GET /.well-known/oauth-protected-resource", gw.ProtectedResourceMetadataHandler())
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok")) })
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
 	srv := &http.Server{Addr: cfg.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	admin := &http.Server{Addr: cfg.AdminListen, Handler: gw.AdminHandler(cfg.AdminToken, revocations), ReadHeaderTimeout: 10 * time.Second}
 

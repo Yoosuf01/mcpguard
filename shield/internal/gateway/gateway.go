@@ -87,7 +87,7 @@ func New(opts Options, engine *policy.Engine, verifier identity.Verifier, rec te
 	auditLog := telemetry.NewRingBuffer(250)
 	multiRec := telemetry.Multi{rec, auditLog}
 	g := &Gateway{opts: opts, backends: map[string]*Backend{}, up: &upstream{client: opts.HTTPClient},
-		engine: engine, verifier: verifier, rec: multiRec, cache: cache.New(5 * time.Minute, 10000),
+		engine: engine, verifier: verifier, rec: multiRec, cache: cache.New(5*time.Minute, 10000),
 		pins: pins, auditLog: auditLog}
 	for _, b := range opts.Backends {
 		if b.Protocol == "" {

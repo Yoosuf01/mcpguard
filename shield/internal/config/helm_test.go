@@ -135,4 +135,3 @@ func TestHelmChart_StructureAndSyntax(t *testing.T) {
 		}
 	}
 }
-

@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -87,6 +88,10 @@ func TestDockerDriver_Defaults(t *testing.T) {
 }
 
 func TestDockerDriver_ConformanceLive(t *testing.T) {
+	if os.Getenv("MCPGUARD_DOCKER_LIVE") != "1" {
+		t.Skip("set MCPGUARD_DOCKER_LIVE=1 to run live Docker conformance tests")
+	}
+
 	ctx := context.Background()
 	driver := NewDockerDriver(DockerOptions{})
 

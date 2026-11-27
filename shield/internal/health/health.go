@@ -32,7 +32,7 @@ func (c *Checker) Register(name string, fn CheckFn) {
 func LivenessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status": "ok",
 			"ts":     time.Now().UTC().Format(time.RFC3339),
 		})
@@ -69,6 +69,6 @@ func (c *Checker) ReadinessHandler() http.HandlerFunc {
 			body["status"] = "degraded"
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}
-		json.NewEncoder(w).Encode(body)
+		_ = json.NewEncoder(w).Encode(body)
 	}
 }
