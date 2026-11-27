@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/Yoosuf01/mcpguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Yoosuf01/mcpguard/actions)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/go-1.23%2B-00ADD8?logo=go)](https://go.dev)
+[![Go Version](https://img.shields.io/badge/go-1.26%2B-00ADD8?logo=go)](https://go.dev)
 
 MCPGuard sits between your AI agents and their MCP tool servers, enforcing
 **fine-grained security policies** before any tool call reaches the backend.
@@ -78,6 +78,27 @@ export MCPGUARD_HS256_SECRET="your-32-plus-byte-secret-here-!!"
 export MCPGUARD_ADMIN_TOKEN="your-admin-token"
 ./bin/mcpguard -config shield/configs/shield.yaml
 ```
+
+### Run the Exploit Demo (See Attacks Blocked Live)
+
+```bash
+cd shield && ./examples/exploit-demo/demo.sh
+```
+
+Runs 7 real attack vectors against raw upstream servers vs. MCPGuard (prompt injection, `DROP TABLE`, data exfiltration, SSRF to `169.254.169.254`, PII redaction, and instant session revocation).
+
+### Install via Go
+
+```bash
+go install github.com/Yoosuf01/mcpguard/shield/cmd/shield@latest
+```
+
+### Client & Production Integrations
+
+- **Claude Code / Cursor:** [`examples/claude-code`](examples/claude-code) · [`examples/cursor`](examples/cursor)
+- **Zoho CRM Scoped MCP Example:** [`examples/zoho-crm-mcp-server`](examples/zoho-crm-mcp-server)
+- **Kubernetes Helm Chart:** [`deploy/helm/mcpguard`](deploy/helm/mcpguard) · [`deploy/docker-compose.yaml`](deploy/docker-compose.yaml)
+- **Security Docs:** [`docs/threat-model.md`](docs/threat-model.md) · [`docs/policy-reference.md`](docs/policy-reference.md)
 
 ### Mint a dev JWT
 

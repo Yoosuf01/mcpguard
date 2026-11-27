@@ -5,6 +5,21 @@ Follows [SemVer](https://semver.org) and [Keep a Changelog](https://keepachangel
 
 ---
 
+## [0.2.0] – 2026-11-27
+
+Major feature expansion adding Policy-as-Code, Enterprise Identity Federation, Compute Sandboxing, and Production Fabric orchestration.
+
+### Added
+- **Policy-as-Code (Phase 1b)**: Embedded Open Policy Agent (OPA) Go runtime (`opa/rego`) evaluating native Rego v1 policies, YAML-to-Rego compiler (`mcpguard policy compile`), and policy test CLI (`mcpguard policy test`) with 17-scenario conformance parity.
+- **Sentinel Identity (Phase 2)**: RFC 8693 OAuth 2.0 token exchange with 3-way scope intersection math, ES256 `JWKSVerifier` with singleflight deduplication and SSRF-safe fetching, Agent Identity Registry, RFC 9470 OAuth Protected Resource Metadata, and Redis Pub/Sub real-time session revocation kill switch.
+- **Sentinel Sandbox (Phase 3)**: Hardened unprivileged Docker driver (`--network none`, `--read-only`, `--cap-drop ALL`, `no-new-privileges`), Firecracker MicroVM driver over `virtio-vsock` (<5 ms warm pool), DNS-pinned forward egress proxy defeating TOCTOU DNS rebinding, and unified escape conformance suite.
+- **Sentinel Fabric (Phase 4)**: Production Docker Compose stack (`deploy/docker-compose.yaml`), Restricted PSS Kubernetes Helm chart (`deploy/helm/mcpguard`), scoped Zoho CRM MCP reference server (`examples/zoho-crm-mcp-server`), and embedded air-gapped Sentinel Console UI (`/admin/console`).
+
+### Fixed
+- Updated CI workflow and `shield/Dockerfile` toolchain baseline to Go 1.26.
+
+---
+
 ## [0.1.0] – 2026-11-03
 
 First production-grade release of **MCPGuard** (Phase 1 Shield): an open-source security gateway and step-level policy engine for Model Context Protocol (MCP) servers.
