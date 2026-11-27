@@ -1,0 +1,19 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+      - linters:
+          - errcheck
+        text: "Error return value of `.*\\.(Close|Remove|RemoveAll)` is not checked"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
