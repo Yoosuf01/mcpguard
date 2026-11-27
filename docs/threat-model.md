@@ -2,7 +2,7 @@
 
 Anchored on two open MCP spec issues: **MCP-2026-015** (server `instructions` folded into the system
 prompt) and **MCP-2026-008** (`cacheScope` is declared by the server and not verified). These are spec
-issue IDs, not CVEs. Background: see section 2 of [`BRIEF.md`](BRIEF.md).
+issue IDs, not CVEs. See [`PLAN.md`](PLAN.md) and [`policy-reference.md`](policy-reference.md) for architecture and controls.
 
 ## Operational Modes
 - **Enforcing (default)**: Violations return errors (`isError: true`) and drop or withhold malicious payload data.

@@ -1,7 +1,6 @@
 # MCPGuard: Project Plan
 
-Status as of **2026-10-29**. Source of truth for scope is [`BRIEF.md`](BRIEF.md); this file is the
-executable plan derived from it plus a review of the actual code.
+Status as of **2026-10-29**. This file tracks the executable roadmap derived from the architecture review of `shield/`.
 Every item below is **one PR-sized task**. Per the brief, no task starts until you approve it.
 
 ## 1. Where we are (verified, not assumed)

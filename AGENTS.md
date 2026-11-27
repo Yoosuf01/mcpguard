@@ -1,6 +1,6 @@
 # AGENTS.md: instructions for AI coding agents working on MCPGuard
 
-Read `docs/BRIEF.md` fully, then `docs/PLAN.md`, before proposing changes.
+Read `docs/PLAN.md`, `docs/threat-model.md`, and `docs/policy-reference.md` before proposing changes.
 Then read every file under the component you will touch (start with `shield/`).
 
 ## Before you change anything
